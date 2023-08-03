@@ -45,6 +45,6 @@ R Markdown files are meant to be run in the following order:
 
 The following software package is required for pre-processing of raw FASTQ files:
 
-* **[DiMSum](https://github.com/lehner-lab/DiMSum) v1.2.9** (pipeline for pre-processing deep mutational scanning data i.e. FASTQ to fitness). Clitocine, DAP and SRI were run separately (round_A) than CC90009, FUr, Gentamicin, G418, SJ6986 and untreated conditinos (round_B). Shell scripts to run both Dimsum rounds can be found in [Required Data](#required-data).
+* **[DiMSum](https://github.com/lehner-lab/DiMSum) v1.2.9** (pipeline for pre-processing deep mutational scanning data i.e. FASTQ to fitness). Clitocine, DAP and SRI were run separately (round_A) than CC90009, FUr, Gentamicin, G418, SJ6986 and untreated conditinos (round_B). Shell scripts to run both Dimsum rounds can be found in [Required Data](#required-data). Download the FastQ files from Sequence Read Archive (SRA) with accession number PRJNA996618: http://www.ncbi.nlm.nih.gov/bioproject/996618.
 
 Configuration files and additional scripts for running DiMSum are available in the "DiMSum" folder **[here](https://crgcnag-my.sharepoint.com/:f:/g/personal/itoledano_crg_es/Eszq0KwHEq5Lt-NNghiRmzIBtL_MdXLKtIitmotN8VWoaQ?e=CLSl2m)**.

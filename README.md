@@ -1,5 +1,6 @@
-# Stop_codon_readthrough
-Source code for computational analyses and to reproduce all figures in the following publication:  Genome-scale quantification and prediction of drug-induced readthrough of pathogenic premature termination codons (Toledano I, Supek F &amp; Lehner B, 2023)
+Welcome to the GitHub repository for the following publication: Genome-scale quantification and prediction of drug-induced readthrough of pathogenic premature termination codons (Toledano I, Supek F & Lehner B, 2023)
+
+Here you'll find source code for computational analyses and to reproduce the figures in the paper.
 
 # Table Of Contents
 

@@ -1,0 +1,233 @@
+---
+title: "Fig1_extdataFig1"
+output: html_document
+---
+
+**Load the 'treated_samples.rds' object:**
+
+``` 
+  treated_samples<-readRDS(file = "/base_dir/treated_samples.rds")
+```
+
+
+**Fig.1b:** Compute the gene distribution across the dataset for the top50 represented genes.
+
+``` 
+    gene_distribution <- as.data.table(treated_samples[!duplicated(nt_seq)] %>% group_by(GENEINFO) %>% dplyr::summarise(n=n()) %>% arrange(desc(n)) %>% ungroup())
+    gene_distribution[, total:=sum(n), by=GENEINFO]
+    gene_distribution<-gene_distribution%>% arrange(desc(total))
+``` 
+gene_distribution has all the info, but we need it differently arranged to cluster by somatic/germline. That's why we generate gene_distribution_version2, which contains essentially the same info than gene_distribution (+ the somatic/germline info) but differently organised to run the geom_bar(fill=Database) layer.
+
+``` 
+    gene_distribution_version2<-treated_samples[Database%chin%c("clinvar", "msk_impact", "TCGA") & !duplicated(nt_seq)]
+    gene_distribution_version2[Database%chin%c("msk_impact", "TCGA"), Database:="Somatic"]; gene_distribution_version2[Database=="clinvar", Database:="Germline"]
+``` 
+Use the gene_distribution object to filter the gene_distribution_version2 for the top50 represented genes
+
+``` 
+    gene_distribution_version2<-gene_distribution_version2[GENEINFO%chin%gene_distribution[1:50,GENEINFO]]
+    setnames(gene_distribution_version2, "Database", "Mutation type")
+```     
+
+Plot:  
+```
+    ggplot(gene_distribution_version2, aes(GENEINFO, fill=`Mutation type`)) +  geom_bar() + scale_fill_manual(values=c("#FFCCCC", "#FF6666")) + scale_x_discrete(limits = gene_distribution[1:50,GENEINFO]) + p + theme(axis.text.x=element_text(size=12, angle=90), text = element_text(size = 20)) + labs(x="Genes", y="# Variants") +
+      theme(legend.position = c(0.9, .75), legend.text = element_text(size=15))
+```   
+
+**Fig.1c:** Correlation with individual variants.
+
+The data for both DMS and individual measurements of the validation variants is stored in 'DMS_DVC_short' dataframe. Load it and plot the correlation.
+```
+  DMS_DVC_short<-readRDS(file = "/base_dir/Fig1/DMS_DVC.rds")
+
+  ggplot(DMS_DVC_short[!sanger%chin%c("Col.88", "Col.78")], aes(y = DMS, x = validation)) + geom_point(color='black', size=5) +
+    geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(method = "pearson", size=10) +
+    geom_point(data=DMS_DVC_short[sanger=="Col.78"], aes(y = DMS, x = validation), size=5) + xlab("Validation Readthrough(%)") + ylab("DMS Readthrough(%)") + p +
+  theme(text = element_text(size=25))
+``` 
+
+**Fig.1d:** Correlation with Iwone et.al data.
+
+Import the excel with the dataset (manually copied it from the supplementary files of Iwone.et.al paper)
+``` 
+    iwone_dtbl <- read.xlsx("/base_dir/Fig1/iwone_dataset.xlsx", 1)
+``` 
+Find which Iwone variants are present in our library + annotate the Iwone data (mean and sd):
+``` 
+    for (i in 1:nrow(iwone_dtbl)){
+      treated_samples[grep(tolower(iwone_dtbl$variant[i]), nt_seq), c("iwone_mean", "iwone_sd"):=.(iwone_dtbl$gentamicin_RT_mean[i], iwone_dtbl$gentamicin_RT_sd[i])]
+    }
+``` 
+Correlation plot:
+``` 
+    ggplot(treated_samples[!is.na(iwone_mean) & iwone_mean!=0.14 & treatment=="Gentamicin" & replicate==2,], aes(x=RT, y=iwone_mean)) + geom_point(color='black') + geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(method = "pearson", size=5) + labs(x="DMS Readthrough(%)", y="Iwone Readthrough(%)") + p
+    
+``` 
+    
+    
+Viability/toxicity data from the 8 drugs included in the paper (G418, genta, FUR, SRI, DAP, Clitocine, CC-90009 and SJ-6986) (Extended Data Fig.1c).
+  
+Load the viability data from the Tecan output excels:
+``` 
+  plate1<-as.data.table(read.xlsx("/base_dir/Fig1/drugs_toxicity/plate_one.xlsx", sheet="Sheet1"))
+  plate1[, c("percentage_viability", "log_concentration"):=.((Raw_viability/4200000)*100, log(Concentration,2))]
+  plate1[, c("mean", "sd"):=.(mean(percentage_viability), sd(percentage_viability)), by=c("Treatment", "Concentration")]
+  
+  plate2<-as.data.table(read.xlsx("/base_dir/Fig1/drugs_toxicity/plate_two.xlsx", sheet="Sheet1"))
+  plate2[, c("percentage_viability", "log_concentration"):=.((Raw_viability/4900000)*100, log(Concentration,2))]
+  plate2[, c("mean", "sd"):=.(mean(percentage_viability), sd(percentage_viability)), by=c("Treatment", "Concentration")]
+```  
+Generate the 'toxicity' dtbl combining the info of the 8 treatments:
+``` 
+  toxicity<-rbind(plate1, plate2)
+``` 
+  
+Plot it:
+``` 
+ggplot(toxicity[Treatment!="Not treated"], aes(x=log_concentration, y=mean)) + geom_point(aes(color=Used), size=3) + geom_line(size=.5)  +  ggtitle("Toxicity curves") + ylim(0,105)+ geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd)) + xlab("log2_concentration drug") + ylab("% Cell viability (normalised to vehicle-treated cells)") + facet_wrap(~Treatment, scales="free", nrow=2) + p
+
+``` 
+      
+    
+    
+**Extended Data Fig.1d:** Calculate the interreplicate correlations.
+
+We discard the subset of variants with very low coverage (<25reads across bins, outliers). Store the rest of variants in the c1,c2,...,c9 (rep2) dtbls, each datatable belongs to one drug. Then join the 9 datatables into interreplicate_correlations dtbl, and plot:
+
+``` 
+a1<-treated_samples[replicate==2 & treatment=="SJ6986" & reads_allbins>25, fitness_rep]
+b1<-treated_samples[replicate==1 & treatment=="SJ6986" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="SJ6986" & reads_allbins>25, nt_seq]), fitness_rep]
+c1<-data.frame(rep1=b1, rep2=a1, treatment="SJ6986")
+
+a2<-treated_samples[replicate==2 & treatment=="SRI" & reads_allbins>25, fitness_rep]
+b2<-treated_samples[replicate==1 & treatment=="SRI" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="SRI" & reads_allbins>25, nt_seq]), fitness_rep]
+c2<-data.frame(rep1=b2, rep2=a2, treatment="SRI")
+
+a3<-treated_samples[replicate==2 & treatment=="Clitocine" & reads_allbins>25, fitness_rep]
+b3<-treated_samples[replicate==1 & treatment=="Clitocine" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="Clitocine" & reads_allbins>25, nt_seq]), fitness_rep]
+c3<-data.frame(rep1=b3, rep2=a3, treatment="Clitocine")
+
+a4<-treated_samples[replicate==2 & treatment=="DAP" & reads_allbins>25, fitness_rep]
+b4<-treated_samples[replicate==1 & treatment=="DAP" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="DAP" & reads_allbins>25, nt_seq]), fitness_rep]
+c4<-data.frame(rep1=b4, rep2=a4, treatment="DAP")
+
+a5<-treated_samples[replicate==2 & treatment=="CC90009" & reads_allbins>25, fitness_rep]
+b5<-treated_samples[replicate==1 & treatment=="CC90009" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="CC90009" & reads_allbins>25, nt_seq]), fitness_rep]
+c5<-data.frame(rep1=b5, rep2=a5, treatment="CC90009")
+
+a6<-treated_samples[replicate==2 & treatment=="G418" & reads_allbins>25, fitness_rep]
+b6<-treated_samples[replicate==1 & treatment=="G418" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="G418" & reads_allbins>25, nt_seq]), fitness_rep]
+c6<-data.frame(rep1=b6, rep2=a6, treatment="G418")
+
+a7<-treated_samples[replicate==2 & treatment=="Gentamicin" & reads_allbins>25, fitness_rep]
+b7<-treated_samples[replicate==1 & treatment=="Gentamicin" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="Gentamicin" & reads_allbins>25, nt_seq]), fitness_rep]
+c7<-data.frame(rep1=b7, rep2=a7, treatment="Gentamicin")
+
+a8<-treated_samples[replicate==2 & treatment=="FUr" & reads_allbins>25, fitness_rep]
+b8<-treated_samples[replicate==1 & treatment=="FUr" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="FUr" & reads_allbins>25, nt_seq]), fitness_rep]
+c8<-data.frame(rep1=b8, rep2=a8, treatment="FUr")
+
+a9<-treated_samples[replicate==2 & treatment=="Untreated" & reads_allbins>25, fitness_rep]
+b9<-treated_samples[replicate==1 & treatment=="Untreated" & nt_seq%chin%c(treated_samples[replicate==2 & treatment=="Untreated" & reads_allbins>25, nt_seq]), fitness_rep]
+c9<-data.frame(rep1=b9, rep2=a9, treatment="Untreated")
+
+interreplicate_correlations<-rbind(rbind(rbind(rbind(rbind(rbind(rbind(rbind(c1,c2),c3),c4),c5),c6),c7),c8),c9)
+
+```
+Alternatively, directly load the 'interreplicate_correlations.rds' object from base_dir:
+
+```
+  interreplicate_correlations<-readRDS(file = "/base_dir/Fig1/interreplicate_correlations.rds")
+```
+
+Plot drugs separately:
+```
+ggplot(interreplicate_correlations) + geom_hex(aes(y=rep1, x=rep2), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+  theme(strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"), panel.spacing.y = unit(.5, "lines"),
+        legend.position = "none", text = element_text(size = 15), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20), plot.title = element_text(hjust = 0.5), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="Replicate 1", x="Replicate 2") + stat_cor(aes(y=rep1, x=rep2, label = ..r.label..), size=4, label.y.npc=c(1,1)) #title=paste("Clitocine \nr2:", round(mean(R2_1),2), sep="")
+``` 
+
+Plot all drugs together:
+
+``` 
+  ggplot(interreplicate_correlations) + geom_hex(aes(y=rep1, x=rep2), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+    stat_cor(aes(y=rep1, x=rep2, label = ..r.label..), size=4, label.y.npc=c(1,1)) 
+``` 
+
+
+**Extended Data Fig.1e:** Interdrugs correlations.
+
+```
+  a<-treated_samples[treatment=="FUr" & replicate==1 & reads_allbins>15, c("identifier", "RT")]
+  b<-treated_samples[treatment=="CC90009" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  c<-treated_samples[treatment=="Gentamicin" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  d<-treated_samples[treatment=="Untreated" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  e<-treated_samples[treatment=="G418" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  f<-treated_samples[treatment=="SRI" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  g<-treated_samples[treatment=="SJ6986" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  h<-treated_samples[treatment=="Clitocine" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  i<-treated_samples[treatment=="DAP" & replicate==1 & reads_allbins>15,  c("identifier", "RT")]
+  
+```
+Alternatively, directly load the 'interdrugs_correlation.rds' object from base_dir:
+
+```
+  interdrugs_correlation<-readRDS(file = "/base_dir/Fig1/interdrugs_correlation.rds")
+```
+
+Plot:
+
+```
+  interdrugs_correlation<-left_join(left_join(left_join(left_join(left_join(left_join(left_join(left_join(a,b, by="identifier"),c, by="identifier"),d, by="identifier"),e, by="identifier"),f, by="identifier"),g, by="identifier"),h, by="identifier"),i, by="identifier")
+  colnames(interdrugs_correlation)<-c("identifier", "FUr", "CC90009", "Genta", "Untreated", "G418","SRI", "SJ6986", "Clitocine", "DAP")
+  ggpairs(interdrugs_correlation, columns=c("FUr", "CC90009", "Genta", "Untreated", "G418","SRI", "SJ6986", "Clitocine", "DAP"),na.rm=T, lower = list(continuous = "smooth"))
+```
+
+
+**Extended Data Fig.1f:** Generate a table with the correlation of all features tested during model design/optimization vs readthrough.
+
+I have to use two different metrics for the continuous and discrete variables: correlation (for continous variables) and krustal-wallis (chi-squared) for the discrete variables.
+  
+variables_continuous_numeric contains the columns indexes of the treated_samples for the continuous features.
+```
+  variables_continuous<-c("tAI_up_1aa", "tAI_up_2aas", "tAI_up_3aas", "tAI_up_4aas", "tAI_up_5aas", "tAI_up_10aas", "tAI_up_15aas", "CAI_up_1aa", "CAI_up_2aas", "CAI_up_3aas", "CAI_up_4aas", "CAI_up_5aas", "CAI_up_10aas", "CAI_up_15aas", "GCperc_2aas",  "GCperc_3aas", "GCperc_4aas", "GCperc_5aas", "GCperc_10aas", "GCperc_15aas", "deltaG_OA", "deltaG_mFold")
+  
+  variables_continuous_numeric<-c()
+  for (i in 1:length(variables_continuous)){
+    variables_continuous_numeric<-c(variables_continuous_numeric, which(colnames(treated_samples)==variables_continuous[i]))
+  } 
+  statistics_continuous<-c()
+  for (i in variables_continuous_numeric){
+    statistics_continuous<-c(statistics_continuous, round(cor(treated_samples[replicate==1, RT],as.data.frame(treated_samples[replicate==1])[,i], use = "complete.obs"),3))
+  }
+  statistics_continuous<-data.frame(Feature=variables_continuous, correlation=statistics_continuous) 
+  statistics_continuous<-statistics_continuous %>% arrange(desc(abs(correlation)))
+```
+ 
+variables_discrete_numeric contains the columns indexes of the treated_samples for the discrete features.
+  
+```  
+variables_discrete<-c("stop_type", "down_1nt","down_2nt", "down_3nt", "down_4nt", "down_5nt", "down_6nt","down_7nt", "down_8nt", "down_12nt", "down_123nt", "down_1234nt","up_1nt", "up_2nt", "up_3nt", "up_12nt", "up_123nt", "up_codon_2", "up_codon_4", "up_codon_5", "up_codon_3", "up_aa", "up_aa2", "proline_stretch")
+  variables_discrete_numeric<-c()
+  for (i in 1:length(variables_discrete)){
+    variables_discrete_numeric<-c(variables_discrete_numeric, which(colnames(treated_samples)==variables_discrete[i]))
+  }
+  statistics_discrete<-c()
+  for (i in variables_discrete_numeric){
+    statistics_discrete<-c(statistics_discrete, round(as.vector(kruskal.test(treated_samples[!is.na(RT) & replicate==1, RT]~as.data.frame(treated_samples[!is.na(RT) & replicate==1])[,i])$statistic),2))
+  }
+  statistics_discrete<-data.frame(Feature=variables_discrete, `chi-squared`=statistics_discrete)
+  statistics_discrete<-statistics_discrete %>% arrange(desc(abs(chi.squared)))
+```
+Plot it:  
+
+```
+  ggplot(statistics_continuous, aes(x=Feature, y=correlation)) + geom_bar(stat="identity", fill="grey") + scale_x_discrete(limits = statistics_continuous$Feature) + 
+    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=.5)) + p
+  
+  ggplot(statistics_discrete, aes(x=Feature, y=chi.squared)) + geom_bar(stat="identity", fill="grey") + scale_x_discrete(limits = statistics_discrete$Feature) + 
+    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=.5)) + p
+```

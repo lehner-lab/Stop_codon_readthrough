@@ -30,22 +30,21 @@ conda install -c conda-forge r-dplyr, r-stringr, r-stringi, r-ggally, r-ggpubr, 
 
 # Usage
 
-The eight R Markdown files (and their respective .html files) contain the code to reproduce the figures and results from the computational analyses described in the following publication: Genome-scale quantification and prediction of drug-induced readthrough of pathogenic premature termination codons (Toledano I, Supek F & Lehner B, 2023). See [Required Data](#required-data) for instructions on how to obtain all required data and miscellaneous files before running the pipeline. If using/downloading the files from [Required Data](#required-data) and only plotting the figures, the expected run time is <10min. However, if generating all the files (i.e. the in silico PTC saturation dataset of the human genome) and models needed for all main and supplementary figures, the expected run time is ~2days (without data parallelisation). All steps in which the user can decide whether to generate the file/model or to download it from [Required Data](#required-data) are indicated.
+The 7 R Markdown files contain the code to reproduce the figures and results from the computational analyses described in the following publication: Genome-scale quantification and prediction of drug-induced readthrough of pathogenic premature termination codons (Toledano I, Supek F & Lehner B, 2023). See [Required Data](#required-data) for instructions on how to obtain all required data and miscellaneous files before running the pipeline. If using/downloading the files from [Required Data](#required-data) and only plotting the figures, the expected run time is <10min. However, if generating all the files (i.e. the in silico PTC saturation dataset of the human genome) and models needed for all main and supplementary figures, the expected run time is ~2days (without data parallelisation). All steps in which the user can decide whether to generate the file/model or to download it from [Required Data](#required-data) are indicated.
 R Markdown files are meant to be run in the following order:
 
-* **1. Dimsum.Rmd**
-* **2. Generate_treated_samples.Rmd**
-* **3. Fig1_extdataFig1.Rmd**
-* **4. Fig2_extdataFig2.Rmd**
-* **5. Fig3_extdataFig3.Rmd**
-* **6. Fig4_extdataFig4.Rmd**
-* **7. Fig5.Rmd**
-* **8. Fig6_extdatafig5.Rmd**
+* **1. Generate_treated_samples.Rmd**
+* **2. Fig1_extdataFig1.Rmd**
+* **3. Fig2_extdataFig2.Rmd**
+* **4. Fig3_extdataFig3.Rmd**
+* **5. Fig4_extdataFig4.Rmd**
+* **6. Fig5.Rmd**
+* **7. Fig6_extdatafig5.Rmd**
 
 # Additional scripts and software
 
 The following software package is required for pre-processing of raw FASTQ files:
 
-* **[DiMSum](https://github.com/lehner-lab/DiMSum) v1.2.9** (pipeline for pre-processing deep mutational scanning data i.e. FASTQ to fitness)
+* **[DiMSum](https://github.com/lehner-lab/DiMSum) v1.2.9** (pipeline for pre-processing deep mutational scanning data i.e. FASTQ to fitness). Clitocine, DAP and SRI were run separately (round_A) than CC90009, FUr, Gentamicin, G418, SJ6986 and untreated conditinos (round_B). Shell scripts to run both Dimsum rounds can be found in [Required Data](#required-data).
 
 Configuration files and additional scripts for running DiMSum are available in the "DiMSum" folder **[here](https://crgcnag-my.sharepoint.com/:f:/g/personal/itoledano_crg_es/Eszq0KwHEq5Lt-NNghiRmzIBtL_MdXLKtIitmotN8VWoaQ?e=CLSl2m)**.

@@ -25,10 +25,7 @@ Make sure you have git and conda installed and then run (expected install time <
 
 ```
 # Install dependencies (preferably in a fresh conda environment)
-conda install -c conda-forge r-dplyr, r-stringr, r-stringi, r-GGally, r-ggpubr, r-ggplot2, r-viridis, r-tidyverse, r-seqinr, r-matrixStats, r-data.table, r-rtracklayer, r-openxlsx, r-reshape2, r-caret, r-hexbin, r-png, r-grid, r-gridExtra, r-MuMIn, r-tidyr, r-rstatix, r-ggridges, r-hrbrthemes, r-glmnet, r-spgs
-
-# Open an R session
-
+conda install -c conda-forge r-dplyr, r-stringr, r-stringi, r-ggally, r-ggpubr, r-ggplot2, r-viridis, r-tidyverse, r-seqinr, r-matrixstats, r-data.table, r-rtracklayer, r-openxlsx, r-reshape2, r-caret, r-hexbin, r-png, r-grid, r-gridextra, r-mumin, r-tidyr, r-rstatix, r-ggridges, r-hrbrthemes, r-glmnet, r-spgs
 ```
 
 # Usage

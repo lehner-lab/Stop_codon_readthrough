@@ -1,0 +1,660 @@
+---
+title: "Generating the dataset named 'treated_samples', with the readthrough and sequence data for all variants across drugs"
+output: html_document
+---
+
+
+**Define your base_dir, where you download all the files from https://crgcnag-my.sharepoint.com/:f:/g/personal/itoledano_crg_es/Eszq0KwHEq5Lt-NNghiRmzIBtL_MdXLKtIitmotN8VWoaQ?e=CLSl2m**
+
+base_dir<-"C:/Users/itoledano/Desktop/RT_Files"
+
+
+
+**Those are the necessary R packages to run the code of the manuscript:**
+```
+library(data.table)
+library(dplyr)
+library(stringr)
+library(stringi)
+library(GGally)
+library(ggpubr)
+library(ggplot2)
+library(viridis)
+library(tidyverse)
+library(seqinr)
+library(matrixStats)
+library(rtracklayer)
+library(openxlsx)
+library(reshape2)
+library(caret)
+library(hexbin)
+library(png)
+library(grid)
+library(gridExtra)
+library(MuMIn)
+library(tidyr)
+library(rstatix)
+library(ggridges)
+library(hrbrthemes)
+library(glmnet)
+library(spgs)
+
+```
+
+
+**Define the color palettes for all figures in the manuscript:**
+
+Individual drugs colors:
+
+```
+  G418_col<-"#C0C0C0"
+  Clitocine_col<-"#d8b365"
+  DAP_col<-"#5ab4ac"
+  SRI_col<-"#8E679F"
+  SJ6986_col<-"#00CC66"
+  CC90009_col<-"#FFCCCC"
+  FUr_col<-"#FF8000"
+  Gentamicin_col<-"#0000FF"
+  Untreated_col<-"#000000"
+  all_col<-"#2B2E33"
+```
+
+Create fill and color palettes assigning one color to one treatment. Then, just by typing the drugs_colors and drugs_fill arguments in the ggplot, automatically each drug will be ALWAYS represented by the same color. They are the same color-drug combination as above.
+
+```
+  mydrugs_Colors <- c("#2B2E33", "#FFCCCC", "#d8b365", "#5ab4ac", "#FF8000", "#C0C0C0", "#0000FF", "#00CC66", "#8E679F", "#000000")
+  names(mydrugs_Colors) <- c("All", "CC90009", "Clitocine", "DAP",  "FUr",  "G418", "Gentamicin", "SJ6986", "SRI", "Untreated")
+  drugs_colors <- scale_colour_manual(name = "Treatment", values = mydrugs_Colors)
+  drugs_fills <- scale_fill_manual(name = "Treatment", values = alpha(mydrugs_Colors, alpha=0.75))
+  
+  
+  mystops_Colors<-c("#34A43B", "#8F8F90", "#66B2FF")
+  names(mystops_Colors) <- c("TAA", "TAG", "TGA")
+  stops_colors <- scale_colour_manual(name = "Stop type", values = mystops_Colors)
+  stops_fills <- scale_fill_manual(name = "Stop type", values = alpha(mystops_Colors, alpha=0.75))
+  
+  
+  mynts_Colors<-c("#34A43B", "#2B2E33", "#D4CE20", "#E6E6E1")
+  names(mynts_Colors) <- c("A", "C", "G", "T")
+  nts_colors <- scale_colour_manual(name = "Nt upstream PTC", values = mynts_Colors)
+  nts_fills <- scale_fill_manual(name = "Nt upstream PTC", values = alpha(mynts_Colors, alpha=0.75))
+  
+
+  mythresholds_Colors<-rev(c("#AB1C37", "#C4191C",  "#E20303",  "#F62828", "#FF6666", "#F69C9C", "#FFCCCC"))
+  names(mythresholds_Colors) <- c("1", "2", "3", "4", "5", "6", "7")
+  thresholds_colors <- scale_colour_manual(name = "Threshold (%)", values = mythresholds_Colors)
+  thresholds_fills <- scale_fill_manual(name = "Threshold (%)", values = alpha(mythresholds_Colors, alpha=0.75))
+ 
+```
+
+**General ggplot layout settings for all figures in the manuscript:**
+
+```
+  p<-theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.key=element_rect(fill="white"), strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"))
+```  
+  
+  
+  
+**Generation of the dataset (named 'treated_samples') from DIMSUM output datatable:** 
+
+**All scripts in this file can be skipped by directly loading the 'treated_samples.rds' from your base_dir**
+ 
+``` 
+  treated_samples<-readRDS(file = file.path(base_dir, "treated_samples.rds"))
+```
+
+We did the experiments in two rounds. First, we tested Clitocine, DAP and SRI (dimsum_diseasePTC_variant_data_merge_A.RData), in the second round we tested CC90009, FUr, G418, Gentamicin, SJ6986 and the untreated condition (dimsum_diseasePTC_B_variant_data_merge_B.RData).
+Load the Dimsum table with variant counts across bins:
+```
+  load(file = file.path(base_dir, "Dimsum/Dimsum_output_files/dimsum_diseasePTC_variant_data_merge_A.RData"))
+  dis_PTCs<-as.data.table(variant_data_merge)
+  
+  load(file = file.path(base_dir, "Dimsum/Dimsum_output_files/dimsum_diseasePTC_B_variant_data_merge_B.RData"))
+  dis_PTCs_b<-as.data.table(variant_data_merge)
+```  
+Remove unnecessary columns:
+```
+  dis_PTCs<-dis_PTCs[, !c("WT", "STOP", "STOP_readthrough", "barcode_valid", "constant_region", "permitted", "too_many_substitutions", "mixed_substitutions")]
+  
+  dis_PTCs_b<-dis_PTCs_b[, !c("WT", "STOP", "STOP_readthrough", "barcode_valid", "constant_region", "permitted", "too_many_substitutions", "mixed_substitutions")] ## Get rid of useless columns
+```
+Set new column names:
+```
+  newnames<-c() 
+  for(k in 1:length(colnames(dis_PTCs))){
+    newnames<-c(newnames, unlist(strsplit(colnames(dis_PTCs)[k], "_e1"))[1])}
+  colnames(dis_PTCs)<-newnames
+  
+  newnames<-c() 
+  for(k in 1:length(colnames(dis_PTCs_b))){
+    newnames<-c(newnames, unlist(strsplit(colnames(dis_PTCs_b)[k], "_e1"))[1])}
+  colnames(dis_PTCs_b)<-newnames
+```
+
+Create 18 subdatatables, each with the data of one replicate and one drug:
+
+```
+dis_clitocine_r1<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "Clitocine0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_clitocine_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_clitocine_r1)[k], "0"))[2])}; colnames(dis_clitocine_r1)<-newnames
+dis_clitocine_r2<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "Clitocine0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_clitocine_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_clitocine_r2)[k], "0"))[2])}; colnames(dis_clitocine_r2)<-newnames
+
+dis_DAP_r1<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "DAP0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_DAP_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_DAP_r1)[k], "0"))[2])}; colnames(dis_DAP_r1)<-newnames
+dis_DAP_r2<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "DAP0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_DAP_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_DAP_r2)[k], "0"))[2])}; colnames(dis_DAP_r2)<-newnames
+
+dis_sri_r1<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "SRI0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_sri_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_sri_r1)[k], "0"))[2])}; colnames(dis_sri_r1)<-newnames
+dis_sri_r2<-dis_PTCs[, .SD, .SDcols = names(dis_PTCs) %like% "SRI0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_sri_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_sri_r2)[k], "0"))[2])}; colnames(dis_sri_r2)<-newnames
+
+dis_fur_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Fur0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_fur_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_fur_r1)[k], "0"))[2])}; colnames(dis_fur_r1)<-newnames
+dis_fur_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Fur0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_fur_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_fur_r2)[k], "0"))[2])}; colnames(dis_fur_r2)<-newnames
+
+dis_Nontreated_b_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Nontreated0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_Nontreated_b_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_Nontreated_b_r1)[k], "0"))[2])}
+  colnames(dis_Nontreated_b_r1)<-newnames
+dis_Nontreated_b_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Nontreated0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_Nontreated_b_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_Nontreated_b_r2)[k], "0"))[2])}
+  colnames(dis_Nontreated_b_r2)<-newnames
+
+dis_G418_b_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "G4180r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_G418_b_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_G418_b_r1)[k], "0"))[2])}; colnames(dis_G418_b_r1)<-newnames
+dis_G418_b_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "G4180r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_G418_b_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_G418_b_r2)[k], "0"))[2])}; colnames(dis_G418_b_r2)<-newnames
+
+dis_CC_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "CC90r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_CC_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_CC_r1)[k], "0"))[2])}; colnames(dis_CC_r1)<-newnames
+dis_CC_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "CC90r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_CC_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_CC_r2)[k], "0"))[2])}; colnames(dis_CC_r2)<-newnames
+
+dis_SJ_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "SJ60r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_SJ_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_SJ_r1)[k], "0"))[2])}; colnames(dis_SJ_r1)<-newnames
+dis_SJ_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "SJ60r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_SJ_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_SJ_r2)[k], "0"))[2])}; colnames(dis_SJ_r2)<-newnames
+
+dis_Gentamicin_b_r1<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Gentamicin0r1|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_Gentamicin_b_r1))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_Gentamicin_b_r1)[k], "0"))[2])}
+  colnames(dis_Gentamicin_b_r1)<-newnames
+dis_Gentamicin_b_r2<-dis_PTCs_b[, .SD, .SDcols = names(dis_PTCs_b) %like% "Gentamicin0r2|nt_seq|aa_seq"]
+newnames<-c() ;for(k in 1:length(colnames(dis_Gentamicin_b_r2))){
+  newnames<-c(newnames, unlist(strsplit(colnames(dis_Gentamicin_b_r2)[k], "0"))[2])}
+  colnames(dis_Gentamicin_b_r2)<-newnames
+
+```
+
+Create the columns 'reads_allbins' (read count for each variant across bins), 'treatment' and 'replicate':
+
+```
+dis_clitocine_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(dis_clitocine_r1)][, c("treatment", "replicate"):=.("Clitocine", 1)]
+dis_clitocine_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(dis_clitocine_r2)][, c("treatment", "replicate"):=.("Clitocine", 2)]
+dis_DAP_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(dis_DAP_r1)][, c("treatment", "replicate"):=.("DAP", 1)]
+dis_DAP_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(dis_DAP_r2)][, c("treatment", "replicate"):=.("DAP", 2)]
+dis_sri_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(dis_sri_r1)][, c("treatment", "replicate"):=.("SRI", 1)]
+dis_sri_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(dis_sri_r2)][, c("treatment", "replicate"):=.("SRI", 2)]
+dis_fur_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6)), by=1:nrow(dis_fur_r1)][, c("treatment", "replicate"):=.("FUr", 1)]
+dis_fur_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6)), by=1:nrow(dis_fur_r2)][, c("treatment", "replicate"):=.("FUr", 2)]
+dis_Nontreated_b_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6)), by=1:nrow(dis_Nontreated_b_r1)][, c("treatment", "replicate"):=.("Untreated", 1)]
+dis_Nontreated_b_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6)), by=1:nrow(dis_Nontreated_b_r2)][, c("treatment", "replicate"):=.("Untreated", 2)]
+dis_G418_b_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7)), by=1:nrow(dis_G418_b_r1)][, c("treatment", "replicate"):=.("G418", 1)]
+dis_G418_b_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7)), by=1:nrow(dis_G418_b_r2)][, c("treatment", "replicate"):=.("G418", 2)]
+dis_CC_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7)), by=1:nrow(dis_CC_r1)][, c("treatment", "replicate"):=.("CC90009", 1)]
+dis_CC_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7)), by=1:nrow(dis_CC_r2)][, c("treatment", "replicate"):=.("CC90009", 2)]
+dis_SJ_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7, r1p8)), by=1:nrow(dis_SJ_r1)][, c("treatment", "replicate"):=.("SJ6986", 1)]
+dis_SJ_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7, r2p8)), by=1:nrow(dis_SJ_r2)][, c("treatment", "replicate"):=.("SJ6986", 2)]
+dis_Gentamicin_b_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6)), by=1:nrow(dis_Gentamicin_b_r1)][, c("treatment", "replicate"):=.("Gentamicin", 1)]
+dis_Gentamicin_b_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6)), by=1:nrow(dis_Gentamicin_b_r2)][, c("treatment", "replicate"):=.("Gentamicin", 2)]
+```
+
+Define the mean mCherry value of each gate, for each of the the drug experiments, and normalise it to the mean mCherry value of the non-PTC control variant:
+The mean mCherry values of each gate for each drug are stored in 'gates_boundaries' file. Load it: 
+
+  ```
+  gates_boundaries<-as.data.table(read.xlsx("/users/itoledano/desktop/Readthrough/disease_PTcs\\gates_boundaries.xlsx", sheet = 3)) 
+
+  sri_bins<-gates_boundaries[Drug=="sri", round(((Mean_value)/3400)*100,2)]
+  dap_bins<-gates_boundaries[Drug=="dap", round(((Mean_value)/3400)*100,2)]
+  clitocine_bins<-gates_boundaries[Drug=="clitocine", round(((Mean_value)/2500)*100,2)]
+  nontreated_bins<-gates_boundaries[Drug=="non_treated", round(((Mean_value)/3400)*100,2)]
+  G418_bins<-gates_boundaries[Drug=="G418", round(((Mean_value)/2500)*100,2)]
+  genta_bins<-gates_boundaries[Drug=="genta", round(((Mean_value)/3400)*100,2)]
+  CC90009_bins<-gates_boundaries[Drug=="CC90009", round(((Mean_value)/3400)*100,2)]
+  SJ6986_bins<-gates_boundaries[Drug=="SJ6986", round(((Mean_value)/3400)*100,2)]
+  fur_bins<-gates_boundaries[Drug=="fur", round(((Mean_value)/2700)*100,2)]
+ 
+```
+
+
+ Calculate the readthrough efficiency for each variant:
+ 
+   All reads of a given variant in a given sorting gate are divided by the total number of reads of that gate and multiplied by a fixed value corresponding to the % of cells of the total population       that belong to that gate, yielding a normalized reads value. This represents the the percentage of reads of the total population belonging to each variant in each gate (for each replicate-drug       combination).
+   
+  Secondly, they are multiplied by the mean mCherry signal of the gate, and then averaged by the total number of normalized reads across gates for each variant; yielding the readthrough efficiency        value for each variant-drug-replicate trio (here named 'fitness_rep').
+
+```
+  dis_clitocine_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.27, (r1p5/(sum(r1p5)))*0.1065, (r1p6/(sum(r1p6)))*0.2080, (r1p7/(sum(r1p7)))*0.1387, (r1p8/(sum(r1p8)))*0.0331)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(dis_clitocine_r1)][, fitness_rep:=((r1p4_norm*clitocine_bins[1] + r1p5_norm*clitocine_bins[2] + r1p6_norm*clitocine_bins[3] + r1p7_norm*clitocine_bins[4] + r1p8_norm*clitocine_bins[5])/sum_normreads), by=1:nrow(dis_clitocine_r1)] # [, fitness_rep_log:=((r1p4_norm*clitocine_bins_log_r1[1] + r1p5_norm*clitocine_bins_log_r1[2] + r1p6_norm*clitocine_bins_log_r1[3] + r1p7_norm*clitocine_bins_log_r1[4] + r1p8_norm*clitocine_bins_log_r1[5])/sum_normreads), by=1:nrow(dis_clitocine_r1)]     
+  dis_clitocine_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.27, (r2p5/(sum(r2p5)))*0.1065, (r2p6/(sum(r2p6)))*0.2080, (r2p7/(sum(r2p7)))*0.2087, (r2p8/(sum(r2p8)))*0.0331)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(dis_clitocine_r2)][, fitness_rep:=((r2p4_norm*clitocine_bins[1] + r2p5_norm*clitocine_bins[2] + r2p6_norm*clitocine_bins[3] + r2p7_norm*clitocine_bins[4] + r2p8_norm*clitocine_bins[5])/sum_normreads), by=1:nrow(dis_clitocine_r2)] # [, fitness_rep_log:=((r2p4_norm*clitocine_bins_log[1] + r2p5_norm*clitocine_bins_log[2] + r2p6_norm*clitocine_bins_log[3] + r2p7_norm*clitocine_bins_log[4] + r2p8_norm*clitocine_bins_log[5])/sum_normreads), by=1:nrow(dis_clitocine_r2)]     
+  
+  dis_DAP_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.43, (r1p5/(sum(r1p5)))*0.053, (r1p6/(sum(r1p6)))*0.114, (r1p7/(sum(r1p7)))*0.197, (r1p8/(sum(r1p8)))*0.417)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(dis_DAP_r1)][, fitness_rep:=((r1p4_norm*dap_bins[1] + r1p5_norm*dap_bins[2] + r1p6_norm*dap_bins[3] + r1p7_norm*dap_bins[4] + r1p8_norm*dap_bins[5])/sum_normreads), by=1:nrow(dis_DAP_r1)] # [, fitness_rep_log:=((r1p4_norm*dap_bins_log[1] + r1p5_norm*dap_bins_log[2] + r1p6_norm*dap_bins_log[3] + r1p7_norm*dap_bins_log[4] + r1p8_norm*dap_bins_log[5])/sum_normreads), by=1:nrow(dis_DAP_r1)]     
+  dis_DAP_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.43, (r2p5/(sum(r2p5)))*0.053, (r2p6/(sum(r2p6)))*0.114, (r2p7/(sum(r2p7)))*0.197, (r2p8/(sum(r2p8)))*0.417)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(dis_DAP_r2)][, fitness_rep:=((r2p4_norm*dap_bins[1] + r2p5_norm*dap_bins[2] + r2p6_norm*dap_bins[3] + r2p7_norm*dap_bins[4] + r2p8_norm*dap_bins[5])/sum_normreads), by=1:nrow(dis_DAP_r2)] # [, fitness_rep_log:=((r2p4_norm*dap_bins_log[1] + r2p5_norm*dap_bins_log[2] + r2p6_norm*dap_bins_log[3] + r2p7_norm*dap_bins_log[4] + r2p8_norm*dap_bins_log[5])/sum_normreads), by=1:nrow(dis_DAP_r2)]    
+  
+  dis_sri_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.1285, (r1p5/(sum(r1p5)))*0.2193, (r1p6/(sum(r1p6)))*0.2881, (r1p7/(sum(r1p7)))*0.1540, (r1p8/(sum(r1p8)))*0.041)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(dis_sri_r1)][, fitness_rep:=((r1p4_norm*sri_bins[1] + r1p5_norm*sri_bins[2] + r1p6_norm*sri_bins[3] + r1p7_norm*sri_bins[4] + r1p8_norm*sri_bins[5])/sum_normreads), by=1:nrow(dis_sri_r1)] # [, fitness_rep_log:=((r1p4_norm*sri_bins_log[1] + r1p5_norm*sri_bins_log[2] + r1p6_norm*sri_bins_log[3] + r1p7_norm*sri_bins_log[4] + r1p8_norm*sri_bins_log[5])/sum_normreads), by=1:nrow(dis_sri_r1)]      
+  dis_sri_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.1285, (r2p5/(sum(r2p5)))*0.2193, (r2p6/(sum(r2p6)))*0.2881, (r2p7/(sum(r2p7)))*0.1540, (r2p8/(sum(r2p8)))*0.041)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(dis_sri_r2)][, fitness_rep:=((r2p4_norm*sri_bins[1] + r2p5_norm*sri_bins[2] + r2p6_norm*sri_bins[3] + r2p7_norm*sri_bins[4] + r2p8_norm*sri_bins[5])/sum_normreads), by=1:nrow(dis_sri_r2)] # [, fitness_rep_log:=((r2p4_norm*sri_bins_log[1] + r2p5_norm*sri_bins_log[2] + r2p6_norm*sri_bins_log[3] + r2p7_norm*sri_bins_log[4] + r2p8_norm*sri_bins_log[5])/sum_normreads), by=1:nrow(dis_sri_r2)]     
+  
+  dis_fur_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm"):=.((r1p4/(sum(r1p4)))*0.56, (r1p5/(sum(r1p5)))*0.19, (r1p6/(sum(r1p6)))*0.09)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm)), by=1:nrow(dis_fur_r1)][, fitness_rep:=((r1p4_norm*fur_bins[1] + r1p5_norm*fur_bins[2] + r1p6_norm*fur_bins[3])/sum_normreads), by=1:nrow(dis_fur_r1)] # [, fitness_rep_log:=((r1p4_norm*fur_bins_log_r1[1] + r1p5_norm*fur_bins_log_r1[2] + r1p6_norm*fur_bins_log_r1[3])/sum_normreads), by=1:nrow(dis_fur_r1)]     
+  dis_fur_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm"):=.((r2p4/(sum(r2p4)))*0.56, (r2p5/(sum(r2p5)))*0.19, (r2p6/(sum(r2p6)))*0.09)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm)), by=1:nrow(dis_fur_r2)][, fitness_rep:=((r2p4_norm*fur_bins[1] + r2p5_norm*fur_bins[2] + r2p6_norm*fur_bins[3])/sum_normreads), by=1:nrow(dis_fur_r2)] # [, fitness_rep_log:=((r2p4_norm*fur_bins_log_r2[1] + r2p5_norm*fur_bins_log_r2[2] + r2p6_norm*fur_bins_log_r2[3])/sum_normreads), by=1:nrow(dis_fur_r2)]     
+  
+  dis_Nontreated_b_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm"):=.((r1p4/(sum(r1p4)))*0.78, (r1p5/(sum(r1p5)))*0.038, (r1p6/(sum(r1p6)))*0.015)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm)), by=1:nrow(dis_Nontreated_b_r1)][, fitness_rep:=((r1p4_norm*nontreated_bins[1] + r1p5_norm*nontreated_bins[2] + r1p6_norm*nontreated_bins[3])/sum_normreads), by=1:nrow(dis_Nontreated_b_r1)] # [, fitness_rep_log:=((r1p4_norm*nontreated_bins_log[1] + r1p5_norm*nontreated_bins_log[2] + r1p6_norm*nontreated_bins_log[3])/sum_normreads), by=1:nrow(dis_Nontreated_b_r1)]     
+  dis_Nontreated_b_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm"):=.((r2p4/(sum(r2p4)))*0.78, (r2p5/(sum(r2p5)))*0.038, (r2p6/(sum(r2p6)))*0.015)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm)), by=1:nrow(dis_Nontreated_b_r2)][, fitness_rep:=((r2p4_norm*nontreated_bins[1] + r2p5_norm*nontreated_bins[2] + r2p6_norm*nontreated_bins[3])/sum_normreads), by=1:nrow(dis_Nontreated_b_r2)] # [, fitness_rep_log:=((r2p4_norm*nontreated_bins_log[1] + r2p5_norm*nontreated_bins_log[2] + r2p6_norm*nontreated_bins_log[3])/sum_normreads), by=1:nrow(dis_Nontreated_b_r2)]    
+  
+  dis_G418_b_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm"):=.((r1p4/(sum(r1p4)))*0.44, (r1p5/(sum(r1p5)))*0.18, (r1p6/(sum(r1p6)))*0.14, (r1p7/(sum(r1p7)))*0.08)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm)), by=1:nrow(dis_G418_b_r1)][, fitness_rep:=((r1p4_norm*G418_bins[1] + r1p5_norm*G418_bins[2] + r1p6_norm*G418_bins[3] + r1p7_norm*G418_bins[4])/sum_normreads), by=1:nrow(dis_G418_b_r1)] # [, fitness_rep_log:=((r1p4_norm*G418_bins_log[1] + r1p5_norm*G418_bins_log[2] + r1p6_norm*G418_bins_log[3] + r1p7_norm*G418_bins_log[4])/sum_normreads), by=1:nrow(dis_G418_b_r1)]      
+  dis_G418_b_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm"):=.((r2p4/(sum(r2p4)))*0.44, (r2p5/(sum(r2p5)))*0.18, (r2p6/(sum(r2p6)))*0.14, (r2p7/(sum(r2p7)))*0.08)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm)), by=1:nrow(dis_G418_b_r2)][, fitness_rep:=((r2p4_norm*G418_bins[1] + r2p5_norm*G418_bins[2] + r2p6_norm*G418_bins[3] + r2p7_norm*G418_bins[4])/sum_normreads), by=1:nrow(dis_G418_b_r2)] # [, fitness_rep_log:=((r2p4_norm*G418_bins_log[1] + r2p5_norm*G418_bins_log[2] + r2p6_norm*G418_bins_log[3] + r2p7_norm*G418_bins_log[4])/sum_normreads), by=1:nrow(dis_G418_b_r2)]     
+  
+  dis_CC_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm"):=.((r1p4/(sum(r1p4)))*0.66, (r1p5/(sum(r1p5)))*0.077, (r1p6/(sum(r1p6)))*0.058, (r1p7/(sum(r1p7)))*0.055)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm)), by=1:nrow(dis_CC_r1)][, fitness_rep:=((r1p4_norm*CC90009_bins[1] + r1p5_norm*CC90009_bins[2] + r1p6_norm*CC90009_bins[3] + r1p7_norm*CC90009_bins[4])/sum_normreads), by=1:nrow(dis_CC_r1)] # [, fitness_rep_log:=((r1p4_norm*CC90009_bins_log[1] + r1p5_norm*CC90009_bins_log[2] + r1p6_norm*CC90009_bins_log[3] + r1p7_norm*CC90009_bins_log[4])/sum_normreads), by=1:nrow(dis_CC_r1)]     
+  dis_CC_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm"):=.((r2p4/(sum(r2p4)))*0.66, (r2p5/(sum(r2p5)))*0.077, (r2p6/(sum(r2p6)))*0.058, (r2p7/(sum(r2p7)))*0.055)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm)), by=1:nrow(dis_CC_r2)][, fitness_rep:=((r2p4_norm*CC90009_bins[1] + r2p5_norm*CC90009_bins[2] + r2p6_norm*CC90009_bins[3] + r2p7_norm*CC90009_bins[4])/sum_normreads), by=1:nrow(dis_CC_r2)] # [, fitness_rep_log:=((r2p4_norm*CC90009_bins_log[1] + r2p5_norm*CC90009_bins_log[2] + r2p6_norm*CC90009_bins_log[3] +r2p7_norm*CC90009_bins_log[4])/sum_normreads), by=1:nrow(dis_CC_r2)]     
+  
+  dis_SJ_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.28, (r1p5/(sum(r1p5)))*0.14, (r1p6/(sum(r1p6)))*0.18, (r1p7/(sum(r1p7)))*0.175, (r1p8/(sum(r1p8)))*0.095)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(dis_SJ_r1)][, fitness_rep:=((r1p4_norm*SJ6986_bins[1] + r1p5_norm*SJ6986_bins[2] + r1p6_norm*SJ6986_bins[3] + r1p7_norm*SJ6986_bins[4] + r1p8_norm*SJ6986_bins[5])/sum_normreads), by=1:nrow(dis_SJ_r1)] # [, fitness_rep_log:=((r1p4_norm*SJ6986_bins_log[1] + r1p5_norm*SJ6986_bins_log[2] + r1p6_norm*SJ6986_bins_log[3] + r1p7_norm*SJ6986_bins_log[4] + r1p8_norm*SJ6986_bins_log[5])/sum_normreads), by=1:nrow(dis_SJ_r1)]    
+  dis_SJ_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.28, (r2p5/(sum(r2p5)))*0.14, (r2p6/(sum(r2p6)))*0.18, (r2p7/(sum(r2p7)))*0.175, (r2p8/(sum(r2p8)))*0.095)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(dis_SJ_r2)][, fitness_rep:=((r2p4_norm*SJ6986_bins[1] + r2p5_norm*SJ6986_bins[2] + r2p6_norm*SJ6986_bins[3] + r2p7_norm*SJ6986_bins[4] + r2p8_norm*SJ6986_bins[5])/sum_normreads), by=1:nrow(dis_SJ_r2)] # [, fitness_rep_log:=((r2p4_norm*SJ6986_bins_log[1] + r2p5_norm*SJ6986_bins_log[2] + r2p6_norm*SJ6986_bins_log[3] + r2p7_norm*SJ6986_bins_log[4] + r2p8_norm*SJ6986_bins_log[5])/sum_normreads), by=1:nrow(dis_SJ_r2)]     
+  
+  dis_Gentamicin_b_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm"):=.((r1p4/(sum(r1p4)))*0.72, (r1p5/(sum(r1p5)))*0.06, (r1p6/(sum(r1p6)))*0.045)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm)), by=1:nrow(dis_Gentamicin_b_r1)][, fitness_rep:=((r1p4_norm*genta_bins[1] + r1p5_norm*genta_bins[2] + r1p6_norm*genta_bins[3])/sum_normreads), by=1:nrow(dis_Gentamicin_b_r1)] # [, fitness_rep_log:=((r1p4_norm*genta_bins_log[1] + r1p5_norm*genta_bins_log[2] + r1p6_norm*genta_bins_log[3])/sum_normreads), by=1:nrow(dis_Gentamicin_b_r1)]     
+  dis_Gentamicin_b_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm"):=.((r2p4/(sum(r2p4)))*0.72, (r2p5/(sum(r2p5)))*0.06, (r2p6/(sum(r2p6)))*0.045)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm)), by=1:nrow(dis_Gentamicin_b_r2)][, fitness_rep:=((r2p4_norm*genta_bins[1] + r2p5_norm*genta_bins[2] + r2p6_norm*genta_bins[3])/sum_normreads), by=1:nrow(dis_Gentamicin_b_r2)] # [, fitness_rep_log:=((r2p4_norm*genta_bins_log[1] + r2p5_norm*genta_bins_log[2] + r2p6_norm*genta_bins_log[3])/sum_normreads), by=1:nrow(dis_Gentamicin_b_r2)] 
+
+```
+
+
+Remove the 'r1' or 'r2' of the column names, to be able to merge all the datatables in one:
+
+```
+  cnames_long<-c("nt_seq", "aa_seq", "p4", "p5", "p6", "p7", "p8", "reads_allbins", "treatment", "replicate", "p4_norm", "p5_norm", "p6_norm", "p7_norm", "p8_norm", "sum_normreads", "fitness_rep")
+  cnames_middle<-c("nt_seq", "aa_seq", "p4", "p5", "p6", "p7", "reads_allbins", "treatment", "replicate", "p4_norm", "p5_norm",  "p6_norm", "p7_norm", "sum_normreads", "fitness_rep")
+  cnames_short<-c("nt_seq", "aa_seq", "p4", "p5", "p6", "reads_allbins", "treatment", "replicate", "p4_norm", "p5_norm", "p6_norm", "sum_normreads", "fitness_rep")
+
+  colnames(dis_clitocine_r1)<-cnames_long; colnames(dis_clitocine_r2)<-cnames_long
+  colnames(dis_DAP_r1)<-cnames_long; colnames(dis_DAP_r2)<-cnames_long
+  colnames(dis_sri_r1)<-cnames_long; colnames(dis_sri_r2)<-cnames_long
+  colnames(dis_fur_r1)<-cnames_short; colnames(dis_fur_r2)<-cnames_short
+  colnames(dis_Nontreated_b_r1)<-cnames_short; colnames(dis_Nontreated_b_r2)<-cnames_short
+  colnames(dis_G418_b_r1)<-cnames_middle; colnames(dis_G418_b_r2)<-cnames_middle
+  colnames(dis_CC_r1)<-cnames_middle; colnames(dis_CC_r2)<-cnames_middle
+  colnames(dis_SJ_r1)<-cnames_long; colnames(dis_SJ_r2)<-cnames_long
+  colnames(dis_Gentamicin_b_r1)<-cnames_short; colnames(dis_Gentamicin_b_r2)<-cnames_short
+```
+
+Merge the two replicates of each treatment in one datatable and calculate the mean readthrough efficiency and the sdeviation ('RT' and 'sd_RT' columns). 
+```
+  dis_clito<-rbind(dis_clitocine_r1, dis_clitocine_r2); dis_clito[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_dap<-rbind(dis_DAP_r1, dis_DAP_r2); dis_dap[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_sri<-rbind(dis_sri_r1, dis_sri_r2); dis_sri[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_fur<-rbind(dis_fur_r1, dis_fur_r2); dis_fur[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_Nontreated_b<-rbind(dis_Nontreated_b_r1, dis_Nontreated_b_r2); dis_Nontreated_b[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_G418_b<-rbind(dis_G418_b_r1, dis_G418_b_r2); dis_G418_b[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_CC<-rbind(dis_CC_r1, dis_CC_r2); dis_CC[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_SJ<-rbind(dis_SJ_r1, dis_SJ_r2); dis_SJ[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  dis_Gentamicin_b<-rbind(dis_Gentamicin_b_r1, dis_Gentamicin_b_r2); dis_Gentamicin_b[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+``` 
+
+Unify the 3 datasets of round_1 (DAP, SRI and Clitocine) in one datatable called 'treated samples_a'.
+
+``` 
+  treated_samples_a<-rbind(dis_dap, rbind(dis_sri, dis_clito))
+``` 
+
+Unify the 6 datasets (untreated, gentamicin, fur, CC90009, SJ6986, G418) in one datatable called 'treated samples_b'. In order to merge them, I have to add some columns to most of the datasets, whose value is set to NA (these are the p6,p7 and/or p8 and normp6,normp7 and/or normp8 columns). That's because cells were sorted with different number of bins depending on the drug.
+```   
+  dis_fur[, setdiff(colnames(dis_SJ), colnames(dis_fur)):= .(NA,NA,NA,NA)]
+  dis_Nontreated_b[, setdiff(colnames(dis_SJ), colnames(dis_Nontreated_b)):= .(NA,NA,NA,NA)]
+  dis_G418_b[, setdiff(colnames(dis_SJ), colnames(dis_G418_b)):= .(NA,NA)]
+  dis_CC[, setdiff(colnames(dis_SJ), colnames(dis_CC)):= .(NA,NA)]
+  dis_Gentamicin_b[, setdiff(colnames(dis_SJ), colnames(dis_Gentamicin_b)):= .(NA,NA,NA,NA)]
+  treated_samples_b<-rbind(dis_Gentamicin_b, rbind(dis_SJ, rbind(dis_CC, rbind(dis_G418_b, rbind(dis_fur, dis_Nontreated_b)))))
+```   
+
+See which sequences in treated_samples_b are not in treated_samples and eliminate them (n=9). I want that sequences have data for all 9 drug conditions. Since treated_samples_b and treated_samples_a data comes from two different DImsum runs, a sequence might be in one dataset but not in the other.
+
+```  
+  eliminate<-setdiff(treated_samples_b[!duplicated(nt_seq), nt_seq], treated_samples_a[!duplicated(nt_seq), nt_seq])
+  treated_samples_b<-treated_samples_b[!nt_seq%chin%eliminate]
+  treated_samples<-rbind(treated_samples_a, treated_samples_b) # Merge treated_samples_a and treated_samples_b
+  treated_samples[!duplicated(nt_seq),.N] # We have 5837 unique sequences.
+  
+```  
+
+# Treated_samples is the mother dataset, with the sequence, reads, counts, and readthrough information for all variants and drugs.
+
+On the following scripts, we add new columns with sequence information, transform the readthrough efficiency ('RT', 0-100 bounded) into a binomial scale ('RT_binomial', 0-1 bounded) and generate the clinical trial column:
+
+The 'special vairant' doesn't have the stop codon in position 73-75, but it has it in position 49-51. Have to treat it separately from the rest of the variants:
+  
+```  
+  special_variant<-"GPRGPRPQTSLLTLDD*GGQGQEPPPEPRITLKVGGQPVTFLVDTGAQH" 
+  
+  treated_samples[, stop_type:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 49, 51)), unlist(substr(nt_seq, 73, 75))), by=1:nrow(treated_samples)]
+  treated_samples[, down_1nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 52)), unlist(substr(nt_seq, 76, 76))), by=1:nrow(treated_samples)]
+  treated_samples[, down_2nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 53, 53)), unlist(substr(nt_seq, 77, 77))), by=1:nrow(treated_samples)]
+  treated_samples[, down_3nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 54, 54)), unlist(substr(nt_seq, 78, 78))), by=1:nrow(treated_samples)]
+  treated_samples[, down_4nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 55, 55)), unlist(substr(nt_seq, 79, 79))), by=1:nrow(treated_samples)]
+  treated_samples[, down_5nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 56, 56)), unlist(substr(nt_seq, 80, 80))), by=1:nrow(treated_samples)]
+  treated_samples[, down_6nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 57, 57)), unlist(substr(nt_seq, 81, 81))), by=1:nrow(treated_samples)]
+  treated_samples[, down_7nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 58, 58)), unlist(substr(nt_seq, 82, 82))), by=1:nrow(treated_samples)]
+  treated_samples[, down_8nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 59, 59)), unlist(substr(nt_seq, 83, 83))), by=1:nrow(treated_samples)]
+  treated_samples[, down_12nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 53)), unlist(substr(nt_seq, 76, 77))), by=1:nrow(treated_samples)]
+  treated_samples[, down_123nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 54)), unlist(substr(nt_seq, 76, 78))), by=1:nrow(treated_samples)]
+  treated_samples[, down_1234nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 55)), unlist(substr(nt_seq, 76, 79))), by=1:nrow(treated_samples)]
+  treated_samples[, up_1nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 48, 48)), unlist(substr(nt_seq, 72, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_2nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 47, 47)), unlist(substr(nt_seq, 71, 71))), by=1:nrow(treated_samples)]
+  treated_samples[, up_3nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 46, 46)), unlist(substr(nt_seq, 70, 70))), by=1:nrow(treated_samples)]
+  treated_samples[, up_12nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 47, 48)), unlist(substr(nt_seq, 71, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_123nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 46, 48)), unlist(substr(nt_seq, 70, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codon_2:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 43, 45)), unlist(substr(nt_seq, 67,69))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codon_3:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 40, 42)), unlist(substr(nt_seq, 64,66))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codon_4:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 37, 39)), unlist(substr(nt_seq, 61,63))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codon_5:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 34, 36)), unlist(substr(nt_seq, 58,60))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aa:= translate(s2c(up_123nt)), by=1:nrow(treated_samples)]
+  treated_samples[, up_aa2:= translate(s2c(up_codon_2)), by=1:nrow(treated_samples)]
+  treated_samples[, RT_binomial:=RT/100]
+  treated_samples[, clinical_trial:="none"]
+  # Factorize the treatment column:
+  treated_samples$treatment<-as.factor(treated_samples$treatment)
+  treated_samples$treatment <- factor(treated_samples$treatment, levels=c("Untreated", "FUr", "Gentamicin", "CC90009", "G418", "Clitocine", "DAP", "SJ6986", "SRI"))
+  
+```  
+
+Interreplicate normalisation: this is only for Clitocine, where the replicates are non-linearly correlated due to a technical issue with the sorter (where to voltage of the laser was different for the two replicates). We fit a loess model predicting replicate_2 based on replicate_1, and then calculate the fitted RT values for the rep1. Then, we substitute the original replicate_1 values for the new ones.
+
+```  
+  rep1<-treated_samples[replicate==1 & treatment=="Clitocine", fitness_rep] # Store rep
+  rep2<-treated_samples[replicate==2 & treatment=="Clitocine" & nt_seq%chin%c(treated_samples[replicate==1 & treatment=="Clitocine", nt_seq]), fitness_rep]
+  clitocine_two_reps<-data.table(rep1=rep1, rep2=rep2)
+  model<-loess(rep2 ~ rep1, clitocine_two_reps, span=0.4)
+  clitocine_two_reps$rep1<-predict(model, clitocine_two_reps[, rep1])
+  treated_samples[replicate==1 & treatment=="Clitocine", fitness_rep:=clitocine_two_reps$rep1]
+```    
+The interreplicate correlation of Clitocine variants has increased to 0.9. 
+  
+Then, recalculate RT and RT_binomial again:
+
+```  
+  treated_samples[treatment=="Clitocine", RT:=mean(fitness_rep), by=nt_seq]
+  treated_samples[, RT_binomial:=RT/100]
+```  
+
+Basal_RT column: create a column that shows if the variant undergoes RT in basal conditions (using the subdatast of treatment='Untreated' and an arbitrary readthrough cutoff of 0.4):
+
+```    
+  high_basal_RT<-treated_samples[RT>0.4 & treatment=="Untreated", unique(nt_seq)]
+  treated_samples[, basal_RT:=if_else(nt_seq%chin%high_basal_RT, "high", "low")]
+```  
+
+Include all the information stored in final_PTC_df to treated_samples. final_PTC_df has varied genomic information about each variant, that we computed during library design:
+Restore the final_PTC_df dataframe:
+```  
+  final_PTC_df<-readRDS(file = file.path(base_dir, "final_PTC_df.rds"))
+  final_PTC_df<-as.data.table(final_PTC_df)
+```  
+Remove unnecessary columns:
+```  
+  #final_PTC_df[,c("fasta_wt", "fasta_mut", "fasta_wt_rev_comp", "fasta_mut_rev_comp", "Twist_sequence"):=.(NULL, NULL, NULL, NULL, NULL)]
+```  
+
+Set the nt_seq column of final_PTC_df in the same format than nt_seq of treated_samples, to allow for left_join to work and add final_PTC_df info to treated_samples:
+
+```  
+  final_PTC_df<-final_PTC_df[!duplicated(nt_seq),] # Remove 18 duplicated sequences.
+  final_PTC_df[, nt_seq:=if_else(is.na(fasta_mut_rev_comp), fasta_mut, fasta_mut_rev_comp), by=1:nrow(final_PTC_df)]
+  final_PTC_df[, nt_seq:=tolower(nt_seq)]
+  final_PTC_df[, nt_seq:=if_else(length_mut_sequence==149, paste(nt_seq, "t", sep=""), nt_seq)]
+  final_PTC_df[, nt_seq:=if_else(length_mut_sequence==148, paste(nt_seq, "at", sep=""), nt_seq)]
+
+  treated_samples<-left_join(treated_samples, final_PTC_df, by = "nt_seq")
+  treated_samples[,c("fasta_wt", "fasta_mut", "fasta_wt_rev_comp", "fasta_mut_rev_comp", "Twist_sequence"):=.(NULL, NULL, NULL, NULL, NULL)] # Remove unnecessary columns
+  treated_samples$replicate<-as.integer(treated_samples$replicate)
+```  
+
+Add the viral column (we needed the info from final_PTC_df to compute that column) + the identifier column:
+
+```  
+  treated_samples[, viral:=if_else(Database%chin%c("TCGA","clinvar","msk_impact"), "no", "yes")]
+  treated_samples[, identifier:=c(1:5837), by=c("treatment", "replicate")] ### each variant has a number (useful to identify the 6K variants with a number, besides the the nt_seq)
+```  
+
+Generate the Gene_class column, that indicates whether the mutation is germline (if it comes from Clinvar) or somatic (if it comes from MSK_impact or TCGA). The viral mutations are indicated as "viral".
+
+```  
+  treated_samples[, Gene_class:=if_else(Database=="clinvar", "germline", "somatic")]
+  treated_samples[viral=="yes", Gene_class:="viral"]
+```  
+
+
+tAI abundance
+Download the tAI Stadium dataset (from http://stadium.pmrc.re.kr.) and load it on tAI_stadium object.
+``` 
+  tAI_stadium<-as.data.table(read.csv(file = file.path(base_dir, "tAI_homosapiens_stadium.csv"), header=T, quote=""))
+``` 
+Calculate the tAI value for the up_123nt:
+``` 
+  treated_samples[treatment=="Clitocine", tAI_up_1aa:=tAI_stadium$weight[which(tAI_stadium$Codon.List==toupper(up_123nt))], by=1:nrow(treated_samples)]
+  
+``` 
+Calculate the weighted tAI value for a chunk of several codons upstream: 2,3,4,5,6,7 and 15.  Mulitiply the tAI values of each codon and normalise by the codon length of the chunk -> (W1*W2*W3*W4)^(1/4), where W represents tAI values of single codons in a chunk of 4 codons. The formula is obtained from https://academic.oup.com/bioinformatics/article/33/4/589/2593585?login=false. 
+
+``` 
+  treated_samples[, up_codons_chunk_2:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 43, 48)), unlist(substr(nt_seq, 67, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codons_chunk_3:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 40, 48)), unlist(substr(nt_seq, 64, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codons_chunk_4:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 37, 48)), unlist(substr(nt_seq, 61, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codons_chunk_5:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 34, 48)), unlist(substr(nt_seq, 58, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codons_chunk_10:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 19, 48)), unlist(substr(nt_seq, 43, 72))), by=1:nrow(treated_samples)]
+  treated_samples[, up_codons_chunk_15:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 4, 48)), unlist(substr(nt_seq, 28, 72))), by=1:nrow(treated_samples)]
+  
+  treated_samples[, up_aas_chunk_2:= c2s(translate(s2c(up_codons_chunk_2))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aas_chunk_3:= c2s(translate(s2c(up_codons_chunk_3))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aas_chunk_4:= c2s(translate(s2c(up_codons_chunk_4))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aas_chunk_5:= c2s(translate(s2c(up_codons_chunk_5))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aas_chunk_10:= c2s(translate(s2c(up_codons_chunk_10))), by=1:nrow(treated_samples)]
+  treated_samples[, up_aas_chunk_15:= c2s(translate(s2c(up_codons_chunk_15))), by=1:nrow(treated_samples)]
+  
+  treated_samples[, tAI_up_2aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_2, seq(1, nchar(up_codons_chunk_2), 3), pmin(seq(1, nchar(up_codons_chunk_2), 3) + 3 - 1, nchar(up_codons_chunk_2)))))])^(1/2), by=1:nrow(treated_samples)] 
+  treated_samples[, tAI_up_3aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_3, seq(1, nchar(up_codons_chunk_3), 3), pmin(seq(1, nchar(up_codons_chunk_3), 3) + 3 - 1, nchar(up_codons_chunk_3)))))])^(1/3), by=1:nrow(treated_samples)] 
+  treated_samples[, tAI_up_4aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_4, seq(1, nchar(up_codons_chunk_4), 3), pmin(seq(1, nchar(up_codons_chunk_4), 3) + 3 - 1, nchar(up_codons_chunk_4)))))])^(1/4), by=1:nrow(treated_samples)] 
+  treated_samples[, tAI_up_5aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_5, seq(1, nchar(up_codons_chunk_5), 3), pmin(seq(1, nchar(up_codons_chunk_5), 3) + 3 - 1, nchar(up_codons_chunk_5)))))])^(1/5), by=1:nrow(treated_samples)] 
+  treated_samples[, tAI_up_10aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_10, seq(1, nchar(up_codons_chunk_10), 3), pmin(seq(1, nchar(up_codons_chunk_10), 3) + 3 - 1, nchar(up_codons_chunk_10)))))])^(1/10), by=1:nrow(treated_samples)] 
+  treated_samples[, tAI_up_15aas:=product(tAI_stadium$weight[which(tAI_stadium$Codon.List%in%toupper(substring(up_codons_chunk_15, seq(1, nchar(up_codons_chunk_15), 3), pmin(seq(1, nchar(up_codons_chunk_15), 3) + 3 - 1, nchar(up_codons_chunk_15)))))])^(1/15), by=1:nrow(treated_samples)] 
+```  
+
+Calculate the GC% for the 2,3,4,5,10 and 15 aas upstream of the PTC:
+  
+```   
+  treated_samples[, GCperc_2aas:= round(sum(str_count(up_codons_chunk_2, pattern = c("c","g")))/6,2), by=1:nrow(treated_samples)]
+  treated_samples[, GCperc_3aas:= round(sum(str_count(up_codons_chunk_3, pattern = c("c","g")))/9,2), by=1:nrow(treated_samples)]
+  treated_samples[, GCperc_4aas:= round(sum(str_count(up_codons_chunk_4, pattern = c("c","g")))/12,2), by=1:nrow(treated_samples)]
+  treated_samples[, GCperc_5aas:= round(sum(str_count(up_codons_chunk_5, pattern = c("c","g")))/15,2), by=1:nrow(treated_samples)]
+  treated_samples[, GCperc_10aas:= round(sum(str_count(up_codons_chunk_10, pattern = c("c","g")))/30,2), by=1:nrow(treated_samples)]
+  treated_samples[, GCperc_15aas:= round(sum(str_count(up_codons_chunk_15, pattern = c("c","g")))/45,2), by=1:nrow(treated_samples)]
+```   
+  
+CAI:
+Download the homo_sapiens codon usage table from CoCoputs (https://dnahive.fda.gov/dna.cgi?cmd=cuts_main) and load it on codon_usage_cocoputs object.
+
+``` 
+  codon_usage_cocoputs<-as.data.table(read.csv(file = file.path(base_dir, "codon_usage_cocoputs.csv"), header=T, quote=""))
+  codon_usage_cocoputs$Codon_usage<-as.numeric(codon_usage_cocoputs$Codon_usage)
+  treated_samples[, CAI_up_1aa:=codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon==toupper(up_123nt))], by=1:nrow(treated_samples)]
+ ```  
+Calculate the weighted CAI for chunks of different lengths upstream: 2,3,4,5,6,7,15.
+
+``` 
+  treated_samples[, CAI_up_2aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_2, seq(1, nchar(up_codons_chunk_2), 3), pmin(seq(1, nchar(up_codons_chunk_2), 3) + 3 - 1, nchar(up_codons_chunk_2)))))])^(1/2), by=1:nrow(treated_samples)] 
+  treated_samples[, CAI_up_3aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_3, seq(1, nchar(up_codons_chunk_3), 3), pmin(seq(1, nchar(up_codons_chunk_3), 3) + 3 - 1, nchar(up_codons_chunk_3)))))])^(1/3), by=1:nrow(treated_samples)] 
+  treated_samples[, CAI_up_4aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_4, seq(1, nchar(up_codons_chunk_4), 3), pmin(seq(1, nchar(up_codons_chunk_4), 3) + 3 - 1, nchar(up_codons_chunk_4)))))])^(1/4), by=1:nrow(treated_samples)] 
+  treated_samples[, CAI_up_5aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_5, seq(1, nchar(up_codons_chunk_5), 3), pmin(seq(1, nchar(up_codons_chunk_5), 3) + 3 - 1, nchar(up_codons_chunk_5)))))])^(1/5), by=1:nrow(treated_samples)] 
+  treated_samples[, CAI_up_10aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_10, seq(1, nchar(up_codons_chunk_10), 3), pmin(seq(1, nchar(up_codons_chunk_10), 3) + 3 - 1, nchar(up_codons_chunk_10)))))])^(1/10), by=1:nrow(treated_samples)] 
+  treated_samples[, CAI_up_15aas:=product(codon_usage_cocoputs$Codon_usage[which(codon_usage_cocoputs$Codon%in%toupper(substring(up_codons_chunk_15, seq(1, nchar(up_codons_chunk_15), 3), pmin(seq(1, nchar(up_codons_chunk_15), 3) + 3 - 1, nchar(up_codons_chunk_15)))))])^(1/15), by=1:nrow(treated_samples)] 
+  
+``` 
+
+
+Calculate the cDNA coordenates for each nonsense mutation given their genomic coordenates + transcript_ID using the latest version available in BioMart for the GRCh37.p13 genome assembly (downloaded on July 2022).
+
+You can directly jump to step 4) by loading the 'PTC_transcripts_filt' (below), which contains the CDS position of each variant. Alternatively ,steps 1-3 comprise the generation of PTC_transcripts_filt.
+
+``` 
+  PTC_transcripts_filt<-as.data.table(read.table(file = file.path(base_dir, "PTC_transcripts_filt.txt"), header=T, na.strings = "#NA"))
+``` 
+
+
+First, generate a smaller subdataset of 'treated_samples' only with the necessary columns, we call it 'PTC_transcripts '.
+
+```  
+PTC_transcripts <-treated_samples[Database%chin%c("clinvar", "TCGA", "msk_impact"), c("nt_seq", "aa_seq", "Ref_allele", "Mutant_allele", "GENEINFO", "Transcript_ID", "orientation", "position")]
+
+``` 
+
+1) BioMart human genome table
+
+First, generate a smaller subdataset of 'treated_samples' only with the necessary columns, we call it 'PTC_transcripts '.
+
+```  
+PTC_transcripts <-treated_samples[Database%chin%c("clinvar", "TCGA", "msk_impact"), c("nt_seq", "aa_seq", "Ref_allele", "Mutant_allele", "GENEINFO", "Transcript_ID", "orientation", "position")]
+
+
+``` 
+
+``` 
+ensembl <- useEnsembl(biomart = "ensembl", GRCh=37, dataset = "hsapiens_gene_ensembl")
+listDatasets(ensembl)
+# attribute list without hgnc_symbol
+attributes.1 <- c("chromosome_name", "start_position", "end_position", "exon_chrom_start", "exon_chrom_end", "5_utr_start","5_utr_end",
+                  "cdna_coding_start", "cdna_coding_end", "genomic_coding_start","genomic_coding_end", "transcript_length",
+                  "cds_length", "strand", "ensembl_gene_id", "ensembl_transcript_id")
+# attribute list with hgnc_symbol & ensembl_gene_id
+attributes.2 = c("hgnc_symbol","ensembl_gene_id")
+# get results for each query
+results.1 = getBM(attributes = attributes.1, mart = ensembl)
+results.2 = getBM(attributes = attributes.2, mart = ensembl)
+# merge the results for both queries
+results = merge(results.1,results.2,by='ensembl_gene_id',all.x=T)
+
+```
+
+2) Filter our BioMart table
+
+```
+ensembl_gtf <- results[results$ensembl_transcript_id%in%PTC_transcripts$Transcript_ID,]
+PTC_transcripts[,c("variant_CDS_pos","variant_UTR_CDS_pos")] <- NA
+
+```
+
+3) Check PTC CDS position
+
+```
+for (i in 1:nrow(PTC_transcripts)) {
+  PTC_transcripts_filt <- PTC_transcripts[i,]
+  # Filter ENSEMBL GTF file
+  ensembl_gtf_filt <- ensembl_gtf[ensembl_gtf$ensembl_transcript_id%in%PTC_transcripts_filt$Transcript_ID,]
+  # Strand
+  strand <- as.numeric(unique(ensembl_gtf_filt$strand))
+  if (strand == 1 ) {
+    strand <- "+"
+  }  else {
+    strand <- "-"
+  }
+  # # CDS
+  # ensembl_gtf_filt  <- ensembl_gtf_filt[ensembl_gtf_filt$type=="CDS",]
+  # Order
+  ensembl_gtf_filt <- ensembl_gtf_filt[order(ensembl_gtf_filt$exon_chrom_start),]
+  # Introns, exons size
+  introns_size_UTR <- (ensembl_gtf_filt$exon_chrom_start[-1] -1) - (ensembl_gtf_filt$exon_chrom_end[-length(ensembl_gtf_filt$exon_chrom_end)])
+  introns_size <- as.numeric(na.omit((ensembl_gtf_filt$genomic_coding_start[-1] -1) - (ensembl_gtf_filt$genomic_coding_end[-length(ensembl_gtf_filt$genomic_coding_end)])))
+  exons_size_UTR <- ensembl_gtf_filt$exon_chrom_end-ensembl_gtf_filt$exon_chrom_start + 1
+  exons_size <- as.numeric(na.omit(ensembl_gtf_filt$genomic_coding_end-ensembl_gtf_filt$genomic_coding_start + 1))
+  #exons_size <- as.numeric(na.omit(ensembl_gtf_filt$exon_chrom_end-ensembl_gtf_filt$genomic_coding_start + 1))
+  # Position of the variant relative since first position of first exon or TSS (including UTRs + introns)
+  variant_gene_position_UTR_exons <- PTC_transcripts_filt$position-ensembl_gtf_filt$exon_chrom_start[1]+1
+  # Position of the variant relative since first position of first exon or TSS (including introns)
+  variant_gene_position_exons <- PTC_transcripts_filt$position-na.omit(ensembl_gtf_filt[,"genomic_coding_start"])[1]+1
+  # Check in which CDS exon the variant is located (+ strand)
+  variant_CDS_exon_num <- which(na.omit(PTC_transcripts_filt$position >= ensembl_gtf_filt$genomic_coding_start & PTC_transcripts_filt$position <= ensembl_gtf_filt$genomic_coding_end))
+  variant_UTR_CDS_exon_num <- which(PTC_transcripts_filt$position >= ensembl_gtf_filt$exon_chrom_start & PTC_transcripts_filt$position <= ensembl_gtf_filt$exon_chrom_end)
+  
+  # variant UTR CDS position
+  if(length(variant_UTR_CDS_exon_num) == 0 ){
+    print("Coords are wrong, because exon number is not found")
+    print(i)
+    next
+  } else {
+    # Position of the variant in the CDS (only exons, removing introns size)
+    # Variant position of the first exon
+    if (variant_UTR_CDS_exon_num == 1) {
+      variant_UTR_CDS_position <- variant_gene_position_UTR_exons
+    } else { # Otherwise
+      variant_UTR_CDS_position <- variant_gene_position_UTR_exons-sum(introns_size_UTR[1:(variant_UTR_CDS_exon_num-1)])
+    }
+    if (strand == "-") {
+      variant_UTR_CDS_position <- sum(exons_size_UTR)-variant_UTR_CDS_position+1
+    }
+    # variant CDS position
+    PTC_transcripts$variant_UTR_CDS_pos[i] <- variant_UTR_CDS_position
+  }
+
+  # variant CDS position
+  if (length(variant_CDS_exon_num) == 0 ) {
+    next
+  } else {
+    # Position of the variant in the CDS (only exons, removing introns size)
+    # Variant position of the first exon
+    if (variant_CDS_exon_num == 1) {
+      variant_CDS_position <- variant_gene_position_exons
+    } else { # Otherwise
+      variant_CDS_position <- variant_gene_position_exons-sum(introns_size[1:(variant_CDS_exon_num-1)])
+    }
+    if (strand == "-") {
+      variant_CDS_position <- sum(exons_size)-variant_CDS_position+1
+    }
+    # variant CDS position
+    PTC_transcripts$variant_CDS_pos[i] <- variant_CDS_position
+  }
+}
+
+PTC_transcripts <- PTC_transcripts[order(PTC_transcripts$variant_CDS_pos),]
+PTC_transcripts_filt <- PTC_transcripts[!duplicated(PTC_transcripts),]
+PTC_transcripts_filt<-PTC_transcripts_filt[!duplicated(nt_seq),c("nt_seq", "variant_CDS_pos", "variant_UTR_CDS_pos")]
+setnames(PTC_transcripts_filt, c("nt_seq", "variant_CDS_pos", "variant_UTR_CDS_pos"), c("nt_seq", "nt_CDS_pos", "nt_UTR_CDS_pos"))
+
+```
+
+4) Add the CDS position info of each PTC into the 'treated_samples' dataset:
+```
+    treated_samples<-left_join(treated_samples, PTC_transcripts_filt, by="nt_seq")
+    
+  # Calculate the CDS position of the mutated aminoacid.
+  treated_samples[, codon_CDS_pos:=ceiling(as.numeric(nt_CDS_pos)/3)] 
+  
+  # Generate the mutation_identifier column (with the mutations annotation info).
+  treated_samples[, mutation_identifier:=paste(GENEINFO, "_", WT_aa, codon_CDS_pos, "X", sep="")] 
+  
+  # Generate the mutation_identifier_short column (without the gene info).
+  treated_samples[, mutation_identifier_short:=paste(WT_aa, codon_CDS_pos, "X", sep="")] 
+  
+  # Generate the aa_gene_position column (aminoacid position of the CDS where the PTC is).
+  treated_samples[, aa_gene_position:=gsub("[^0-9.-]", "", mutation_identifier_short), by=1:nrow(treated_samples)]
+  treated_samples$aa_gene_position<-as.numeric(treated_samples$aa_gene_position)
+```

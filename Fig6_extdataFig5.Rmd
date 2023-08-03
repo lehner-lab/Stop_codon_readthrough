@@ -1,0 +1,586 @@
+---
+title: "Fig6_extdataFig5"
+output: html_document
+---
+
+
+**Load the 'treated_samples.rds' object:**
+
+``` 
+  treated_samples<-readRDS(file = file.path(base_dir, "treated_samples.rds"))
+```
+
+**Generation of the in silico PTC saturation mutagenesis dataset of the human exome. The dataset can be visualised in two different formats (named 'list2' and 'list2_dtbl', each suits better for different analysis and figures).**
+
+Alternatively, directly load the 'list2.rds' and 'list2_dtbl.rds' objects from base_dir (loading takes 5-10mins each, both are very heavy files):
+In that case, directly jump to the 'Generate and save as .txt files the 24 different datatables (each with one treatment and stop_tpye prediction)' section.
+
+```
+  list2<-readRDS(file = file.path(base_dir, "Fig6_insilico_saturation_mutagenesis/list2.rds"))
+  list2_dtbl<-readRDS(file = file.path(base_dir, "Fig6_insilico_saturation_mutagenesis/list2_dtbl.rds"))
+```
+
+
+```  
+# Use biomaRt package to access the ensembl hsapiens_gene_ensembl dataset and store it in ensembl object.
+  ensembl = useMart(biomart="ensembl",dataset="hsapiens_gene_ensembl")
+## Retrieve these four attributes ('ensembl_transcript_id', 'hgnc_symbol', 'strand', 'transcript_is_canonical') for each transcript:
+  ei<-as.data.table(getBM(attributes=c('ensembl_transcript_id', 'hgnc_symbol', 'strand', 'transcript_mane_select', "ensembl_gene_id"), filters = c("transcript_biotype"), values =   c("protein_coding"), mart=ensembl))
+# Retain only the MANE transcripts:
+  MANE.transcripts<-ei[transcript_mane_select!=""]
+
+## Retrieve the CDS sequence. I use the Homo_sapiens.GRCh38.cds.all.fa file, downloaded from http://ftp.ensembl.org/pub/current_fasta/homo_sapiens/cds/, which contains the CDS for ALL human transcripts. I have to filter for a)MANE and b)coding. Most of them are coding already (beacause it's a CDS file), but I don't know why there are a few strange non-coding transcripts.
+  df <- read.fasta(file = "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/Homo_sapiens.GRCh38.cds.all.fa")
+# Remove ID (ENST.1)
+  names(df) <- gsub("(.*)\\..*","\\1", names(df))
+# Filter by MANE transcript
+  filter <- names(df) %in% MANE.transcripts$ensembl_transcript_id
+  df_filt <- df[filter]
+# Filter by coding
+  filter <- grep("protein_coding",getAnnot(df_filt))
+  df_filt <- df_filt[filter]
+# Remove NMD transcripts
+  filter <- grep("nonsense_mediated_decay",getAnnot(df_filt), invert = TRUE)
+  cds <- df_filt[filter]
+
+# Convert the fasta file into a dataframe (named 'cds_df') with two columns: 'CDS sequence of the transcript' and 'transcript_ID':
+
+  list<-seqinr::getSequence(cds)
+  names_vector<-getName(cds)
+  cds_df<-data.frame(cds=rep("N", 19062), ensembl_transcript_id=rep("N", 19062))
+  for (i in 1:length(list)){
+    cds_df$cds[i]<-paste(unlist(list[[i]]), sep="", collapse = "")
+    cds_df$ensembl_transcript_id[i]<-names_vector[i]
+  }
+
+```
+
+The following 3 'for loops' generate a list (named 'list2') containing the 11M TAG variants. Each list element is a datatable with all the TAG variants for each transcript. The columns contain the sequence, the PTCposition and the gene & transcript which they belong.
+
+```  
+  list1<-list(); list2<-list()
+  for (i in 1:nrow(cds_df)){
+    start <- seq(1, nchar(cds_df$cds[i]), 3); end <- pmin(start + 2, nchar(cds_df$cds[i]))
+    v1<-substring(cds_df$cds[i], start, end)
+    list1[[i]]<-list()
+    for (val in 1:(length(v1))){
+      v1<-substring(cds_df$cds[i], start, end)
+      v1[val]<-"TAG"
+      if((val-25)>=0){
+        list1[[i]][[val]]<-as.vector(na.omit(v1[(val-25):(val+25)]))
+      } else {
+        list1[[i]][[val]]<-as.vector(na.omit(v1[0:(val+25)]))
+      }
+      list1[[i]][[val]]<-paste(list1[[i]][[val]], collapse='')
+      list2[[i]]<-unlist(list1[[i]])
+    }}
+```    
+
+
+```
+    for (i in 1:length(list2)){
+      list2[[i]]<-data.frame("sequence"=list2[[i]], "ensembl_transcript_id"=cds_df$ensembl_transcript_id[i])  ## The WTs (no stop codon) have the PTCposition value =84. 
+    }
+```
+
+```
+    for(i in 1:length(list2)){
+      for(j in 1:nrow(list2[[i]])){
+        list2[[i]]$position_PTC[j]<-j
+        list2[[i]]$PTC_type[j]<-"TAG"
+      }}
+```
+
+Generate new columns for all genes (dataframes) stored in list2: (this loop takes long, around 1.30h-2hrs:)
+
+```
+for (i in 1:length(list2)){
+  list2[[i]]<-as.data.table(list2[[i]])
+  list2[[i]][, down_1nt:=if_else(position_PTC ==nrow(list2[[i]]), "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]+3), (gregexpr("TAG", sequence)[[1]][1]+3)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, down_12nt:=if_else(position_PTC ==nrow(list2[[i]]), "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]+3), (gregexpr("TAG", sequence)[[1]][1]+4)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, down_123nt:=if_else(position_PTC ==nrow(list2[[i]]), "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]+3), (gregexpr("TAG", sequence)[[1]][1]+5)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, up_1nt:=if_else(position_PTC ==1, "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]-1), (gregexpr("TAG", sequence)[[1]][1]-1)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, up_123nt:=if_else(position_PTC ==1, "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]-3), (gregexpr("TAG", sequence)[[1]][1]-1)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, up_aa:= translate(s2c(up_123nt)), by=1:nrow(list2[[i]])]
+  list2[[i]][, up_codon_2:=if_else(position_PTC%in%c(1,2), "none", unlist(substr(sequence, (gregexpr("TAG", sequence)[[1]][1]-6), (gregexpr("TAG", sequence)[[1]][1]-4)))), by=1:nrow(list2[[i]])]
+  list2[[i]][, up_aa2:= translate(s2c(up_codon_2)), by=1:nrow(list2[[i]])]
+  list2[[i]][, PTC_type:= tolower(PTC_type), by=1:nrow(list2[[i]])]
+}
+
+```
+The script above introduces a NA in the 2nd codon of each transcript in the up_codon, up_1 and up_aa columns. Since all the 2nd codons have an ATG upstream, I manually insert ATG, G and M in the up_codon, up_1 and up_aa columns.
+
+```
+for (i in 1:length(list2)){
+  list2[[i]]$up_codon[2]<-"atg"
+  list2[[i]]$up_1[2]<-"g"
+  list2[[i]]$up_aa[2]<-"M"}
+```
+
+Introduce another column with the gene_name for each transcript (use the 'MANE.transcripts df' to do it, which was generated above):
+
+```
+  for (i in 1:length(list2)){
+    list2[[i]][, gene:=MANE.transcripts[ensembl_transcript_id==unlist(strsplit(list2[[i]][,ensembl_transcript_id][1], "\\Q.\\E"))[1], hgnc_symbol][1]]
+  }
+```
+Then, build a vector with the gene name of each list2 entry (named 'gene_names). I'll need it to select genes from list2:
+
+```  
+  gene_names<-c()
+  for (i in 1:length(list2)){
+    gene_names<-c(gene_names, list2[[i]][1,gene])
+  }
+```
+
+Generate the 'TAA' and 'TGA' entries, do a couple of modifications (like change PTC_type to stop_type in order to match the names of the treated_samples datable, or change 'none' values to NAs.):
+
+```
+  for (i in 1:length(list2)){
+    x_1<-as.data.frame(list2[[i]]); x_2<-as.data.frame(list2[[i]])
+    x_1$PTC_type="taa"; x_2$PTC_type="tga"
+    list2[[i]]<-rbind(rbind(list2[[i]],x_1),x_2)
+    list2[[i]]<-as.data.table(list2[[i]])
+    colnames(list2[[i]])<-c("nt_seq", "ensembl_transcript_id", "position_PTC", "stop_type", "down_1nt", "down_12nt", "down_123nt", "up_1nt", "up_123nt", "up_aa", "up_codon_2", "up_aa2", "gene")
+    list2[[i]][grepl("none", down_1nt), c("down_1nt", "down_12nt", "down_123nt"):=.(NA,NA,NA)]
+    list2[[i]][grepl("none", up_codon_2), c("up_aa2", "up_codon_2", "up_1nt", "up_123nt", "up_aa"):=.(NA,NA ,NA, NA, NA)]
+  }
+```
+Duplicate the datatable eight times to accomodate all 8 treatments.
+
+```  
+  list2[[i]]<-rbind(list2[[i]],rbind(list2[[i]],rbind(list2[[i]],rbind(list2[[i]],rbind(list2[[i]],rbind(list2[[i]],rbind(list2[[i]],list2[[i]])))))))
+```
+
+Generate the treatment column:
+
+```  
+  a<-nrow(list2[[i]])/8
+  list2[[i]][, treatment:=c(rep("dap", a), rep("sri", a), rep("Clitocine", a), rep("Gentamicin", a), rep("SJ6986", a), rep("CC90009", a), rep("G418", a), rep("fur", a))]
+```
+
+
+
+Run predictions for all drugs using the drug-specific models:
+
+Load the models. Those models were generated in Fig.4 (see code of that figure).
+
+```
+  model_nt123_Clitocine<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_Clitocine.rds"))
+  model_nt123_DAP<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_DAP.rds"))
+  model_nt123_G418<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_G418.rds"))
+  model_nt123_SRI<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_SRI.rds"))
+  model_nt123_SJ6986<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_SJ6986.rds"))
+  model_nt123_CC90009<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_CC90009.rds"))
+  model_nt123_Gentamicin<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_Gentamicin.rds"))
+  model_nt123_FUr<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_FUr.rds"))
+  
+```
+Run predictions:
+
+```
+  for (i in 1:length(list2)){
+    list2[[i]][down_123nt%chin%c("tga", "tag", "taa"), down_123nt:=NA]
+    list2[[i]][up_123nt%chin%c("tga", "tag", "taa"), up_123nt:=NA]
+    list2[[i]][stop_type=="tga", nt_seq:=gsub("TAG", "TGA", nt_seq)]; list2[[i]][stop_type=="taa", nt_seq:=gsub("TAG", "TAA", nt_seq)]
+    
+    list2[[i]][, treatment:="fur"]
+    list2[[i]]$predictions_fur<-predict(model_nt123_FUr, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="Gentamicin"]
+    list2[[i]]$predictions_Gentamicin<-predict(model_nt123_Gentamicin, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="CC90009"]
+    list2[[i]]$predictions_CC90009<-predict(model_nt123_CC90009, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="G418"]
+    list2[[i]]$predictions_G418<-predict(model_nt123_G418, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="Clitocine"]
+    list2[[i]]$predictions_Clitocine<-predict(model_nt123_Clitocine, list2[[i]], type = "response")*100 
+    
+    list2[[i]][, treatment:="dap"]
+    list2[[i]]$predictions_dap<-predict(model_nt123_DAP, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="SJ6986"]
+    list2[[i]]$predictions_SJ6986<-predict(model_nt123_SJ6986, list2[[i]], type = "response")*100
+    
+    list2[[i]][, treatment:="sri"]
+    list2[[i]]$predictions_sri<-predict(model_nt123_SRI, list2[[i]], type = "response")*100
+  }
+```
+
+
+Detect those genes with NA or blank space in the gene column (a tiny minority) and store htem in skip vector and save the skip vector as an .rds object!
+
+```
+  vec<-c()
+  vec2<-c()
+  for (j in 1:length(list2)){
+    if (is.na(unique(list2[[j]]$gene))){
+      vec2<-c(vec2, j)
+    }else if(unique(list2[[j]]$gene)==""){
+      vec<-c(vec, j)
+    }}
+  skip<-c(vec, vec2)
+```
+I also detect that those entries c(9904, 9934, 11816, 12404, 15648, 15652, 16308, 16467, 16773, 16938, 17750, 17980, 18002, 19061) have some problem, and store them in skip object as well.
+
+```
+  skip<-c(skip, 9904, 9934, 11816, 12404, 15648, 15652, 16308, 16467, 16773, 16938, 17750, 17980, 18002, 19061) 
+```
+In total, there are 49 genes (49 entries of list2) with problematic annotations, and for those, I can't annonate the genomic coordenates in the loop below. I annoate their chromosome and genomic coordenates columns ('start' and 'end') as 'unkonwn'.
+  
+Load the 'gtf_homosapiens_v107_GRCH38' file with the genomic coordenates and other annotations of all exons:
+
+```
+  gtf_homosapiens_v107_GRCH38 <- as.data.table(rtracklayer::import("C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/Homo_sapiens.GRCh38.107.gtf"))
+```
+
+I need these two objects to filter the gtf file for CDS and MANE transcripts (they were generated at the top of this file):
+
+```
+    MANE.transcripts<-readRDS(file = "~/R/RT/Disease_PTCs/Disease_objects/MANE.transcripts.rds")
+    gene_names<-readRDS(file = "~/R/RT/Disease_PTCs/Disease_objects/gene_names.rds")
+```
+
+Filter the gtf file for CDS and MANE transcripts:
+
+```
+  gtf_subset<-gtf_homosapiens_v107_GRCH38[type=="CDS" & transcript_id%chin%MANE.transcripts$ensembl_transcript_id]
+```
+  
+Annotate the chromosome and genomic coordenates stored in 'gtf_subset' into list2.
+
+```
+  for (j in 1:length(list2)){
+    vector<-c()
+    vector_start<-c()
+    vector_end<-c()
+    if (j%in%skip){
+      list2[[j]][, c("chromosome", "start", "end"):=.("unkown", "unkown", "unkown")]
+    } else {
+      selected_gene<-gtf_subset[gene_name==unique(list2[[j]]$gene)]
+      selected_gene<-gtf_subset[transcript_id==unlist(str_split(list2[[j]]$ensembl_transcript_id[1], "\\."))[1]]
+      for (i in 1:nrow(selected_gene)){
+        vector<-c(vector, seq(selected_gene$start[i], selected_gene$end[i], 1))
+      }
+      vector_start<-c(vector[seq(1, length(vector),3)], (tail(vector, n=1)+1))
+      vector_end<-c(vector[seq(3, length(vector),3)], (tail(vector, n=1)+3))
+      list2[[j]][, c("chromosome", "start", "end"):=.(selected_gene$seqnames[1], rep(vector_start,3), rep(vector_end,3))]
+    }}
+  
+```  
+
+**Generate the BedGraph files to visualise as genome custom tracks in UCSC:**
+
+Convert the list2 to a datatable-> Bind all the entries of list2 into list2_dtbl:
+``` 
+      list2_dtbl<-list2[-skip] %>% bind_rows() # it takes aprox 20mins
+``` 
+Because of the coordenate system of UCSC we have to do the following adjustments:
+``` 
+      list2_dtbl[,start:=start-1]
+      list2_dtbl[,chromosome:=paste0("chr", chromosome)]
+      list2_dtbl<-list2_dtbl[!(start-end!=(-3))] 
+      list2_dtbl<-list2_dtbl[!is.na(predictions_sri)]
+      setnames(list2_dtbl, c("chromosome", "start", "end"), c("#chrom", "chromStart", "chromEnd"))
+```       
+Important, to deactivate scientific annotation. Otherwise, some coordenates are written like e^07 and this is not recognized by the UCSC browser.
+``` 
+      options(scipen=999) 
+``` 
+    
+**Generate and save as .txt files the 24 different datatables (each with one treatment and stop_tpye prediction):**
+
+``` 
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_sri")], "predictions_sri", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SRI_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_sri")], "predictions_sri", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SRI_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_sri")], "predictions_sri", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SRI_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_SJ6986")], "predictions_SJ6986", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SJ6986_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_SJ6986")], "predictions_SJ6986", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SJ6986_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_SJ6986")], "predictions_SJ6986", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/SJ6986_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_CC90009")], "predictions_CC90009", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/CC90009_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_CC90009")], "predictions_CC90009", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/CC90009_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_CC90009")], "predictions_CC90009", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/CC90009_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_dap")], "predictions_dap", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/DAP_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_dap")], "predictions_dap", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/DAP_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_dap")], "predictions_dap", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/DAP_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_Clitocine")], "predictions_Clitocine", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Clitocine_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_Clitocine")], "predictions_Clitocine", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Clitocine_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_Clitocine")], "predictions_Clitocine", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Clitocine_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_fur")], "predictions_fur", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/FUr_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_fur")], "predictions_fur", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/FUr_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_fur")], "predictions_fur", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/FUr_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_Gentamicin")], "predictions_Gentamicin", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Gentamicin_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_Gentamicin")], "predictions_Gentamicin", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Gentamicin_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_Gentamicin")], "predictions_Gentamicin", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/Gentamicin_tga.txt", quote=F, row.names = F)
+      
+      write.table(setnames(list2_dtbl[stop_type=="tag", c("#chrom", "chromStart", "chromEnd", "predictions_G418")], "predictions_G418", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/G418_tag.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="taa", c("#chrom", "chromStart", "chromEnd", "predictions_G418")], "predictions_G418", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/G418_taa.txt", quote=F, row.names = F)
+      write.table(setnames(list2_dtbl[stop_type=="tga", c("#chrom", "chromStart", "chromEnd", "predictions_G418")], "predictions_G418", "score"), "C:/Users/itoledano/Desktop/Readthrough/disease_PTCs/bedGraph_files/G418_tga.txt", quote=F, row.names = F)
+
+```      
+
+Then, go the .txt files and manually insert the header info in each to convert them in BedGraph files ready to be uploaded to UCSC. Basically the following lines (in this example for 'CC90009 TAA' predictions):
+
+``` 
+      # browser pack refGene encodeRegions
+      # browser full altGraph
+      # track type=bedGraph name="CC90009_TAA RT prediction" description="" visibility=full color=200,100,0 priority=20  
+```    
+
+
+
+**Fig.6b, Extended Data Fig.5d:** Readthrough estimates along the TP53 CDS:
+
+Objects needed:
+
+``` 
+    list2_dtbl<-readRDS(file = "~/R/RT/Disease_PTCs/Disease_objects/list2_dtbl.rds") 
+``` 
+
+Define a plots common layout:
+
+``` 
+    p_var3<-theme(text = element_text(size=20), axis.title.x=element_blank(), axis.title.y=element_blank(), legend.position="none", plot.title = element_text(hjust = 0.5, size=17), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.key=element_rect(fill="white"), strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"))
+``` 
+Select the gene we want to plot and store it on 'x' object:
+``` 
+      x<-list2_dtbl[gene=="TP53"]
+```  
+Plots:
+``` 
+
+      d1<-ggplot(x, aes(x=position_PTC, y=predictions_dap, color=toupper(stop_type))) + geom_point() + ggtitle("DAP") + stops_colors + geom_line() + p_var3
+      d2<-ggplot(x, aes(x=position_PTC, y=predictions_Clitocine, color=toupper(stop_type))) + geom_point() + ggtitle("Clitocine") + stops_colors + geom_line() + scale_y_continuous(breaks=seq(0, 2, 1)) + p_var3
+      d3<-ggplot(x, aes(x=position_PTC, y=predictions_sri, color=toupper(stop_type))) + geom_point() + ggtitle("SRI") + stops_colors + geom_line() +  p_var3
+      d4<-ggplot(x, aes(x=position_PTC, y=predictions_G418, color=toupper(stop_type))) + geom_point() + ggtitle("G418") + stops_colors + geom_line() + p_var3
+      d5<-ggplot(x, aes(x=position_PTC, y=predictions_CC90009, color=toupper(stop_type))) + geom_point() + ggtitle("CC90009") + stops_colors + geom_line() + scale_y_continuous(limits=c(0,2), breaks=seq(0, 2, 1)) + p_var3
+      d6<-ggplot(x, aes(x=position_PTC, y=predictions_SJ6986, color=toupper(stop_type))) + geom_point() + ggtitle("SJ6986") + stops_colors + geom_line() + p_var3
+``` 
+
+Combine plots:
+``` 
+        d7<-ggarrange(d1,d3,d6, nrow=3, common.legend=T)
+        d8<-ggarrange(d4,d5,d6, nrow=3, common.legend=T)
+        annotate_figure(d7, bottom = textGrob(paste0(x[1,gene], " CDS position"), gp = gpar(fontsize = 17)), left = textGrob("Readthrough (%)", gp = gpar(fontsize = 17), rot=90))
+        annotate_figure(d8, bottom = textGrob(paste0(x[1,gene], " CDS position"), gp = gpar(fontsize = 17)), left = textGrob("Readthrough (%)", gp = gpar(fontsize = 17), rot=90))
+```   
+
+
+**Extended Data Fig.5e:** Instead of coloring by stop_type and facet_wrapping by drug, do the opposite -> color by drug, and facet_wrap by stop_type:
+
+We need to change a little bit the structure of the x dtbl (from wide to long). We basically need to join the 8 treatment columns with the predictions into two: one with the treatment and one with the predictions. We name this new dtbl 'x_long'.    
+
+```
+      x_long <- as.data.table(gather(x, treatment, predictions, c("predictions_fur", "predictions_Gentamicin", "predictions_CC90009", "predictions_G418", "predictions_Clitocine", "predictions_dap", "predictions_SJ6986", "predictions_sri"), factor_key=TRUE))
+      x_long$treatment<-as.character(x_long$treatment)
+      x_long[, treatment:=unlist(strsplit(treatment, "_"))[2], by=1:nrow(x_long)]
+      x_long[treatment=="fur", treatment:="FUr"]; x_long[treatment=="sri", treatment:="SRI"]; x_long[treatment=="dap", treatment:="DAP"]
+```
+
+Plot
+
+```
+
+    e1<-ggplot(x_long[stop_type=="tag"], aes(x=position_PTC, y=predictions, color=treatment)) + geom_point() + ggtitle("TAG") + drugs_colors + geom_line() + p_var3 
+    e2<-ggplot(x_long[stop_type=="tga"], aes(x=position_PTC, y=predictions, color=treatment)) + geom_point() + ggtitle("TGA") + drugs_colors + geom_line() + p_var3
+    e3<-ggplot(x_long[stop_type=="taa"], aes(x=position_PTC, y=predictions, color=treatment)) + geom_point() + ggtitle("TAA") + drugs_colors + geom_line() + p_var3 
+    e4<-ggarrange(e1,e2,e3, nrow=3, common.legend=T)
+    annotate_figure(e4, bottom = textGrob(paste0(x[1,gene], " CDS position"), gp = gpar(fontsize = 17)), left = textGrob("Readthrough (%)", gp = gpar(fontsize = 17), rot=90))
+```
+
+**Fig.6c:** Bar_plot showing the %mutations >RT treshold for each drug and when considering any of the 8 drugs.
+I have to generate fig6_piecharts_tresholds from list2_dtbl. The 'list2_dtbl_rearranged' and 'list2_dtbl_long' are intermediate dtbls needed for 'fig6_piecharts_tresholds' generation:
+
+```
+          list2_dtbl[,nt_seq:=1:nrow(list2_dtbl)]
+          list2_dtbl_rearranged <- list2_dtbl[, c("nt_seq", "position_PTC" ,"predictions_fur", "predictions_Gentamicin", "predictions_CC90009", "predictions_G418", "predictions_Clitocine", "predictions_dap", "predictions_SJ6986", "predictions_sri", "gene")]
+          list2_dtbl_long<-as.data.table(gather(list2_dtbl_rearranged, treatment, predictions, c("predictions_fur", "predictions_Gentamicin", "predictions_CC90009", "predictions_G418", "predictions_Clitocine", "predictions_dap", "predictions_SJ6986", "predictions_sri"), factor_key=TRUE))
+          list2_dtbl_long$treatment<-as.character(list2_dtbl_long$treatment)
+```
+
+Compute the %mutation >RT treshold for each individual drug. Info stored in 'fig6_piecharts_tresholds':
+```
+        for (i in 1:6){
+          if (i==1){
+            fig6_piecharts_tresholds<-list2_dtbl_long[predictions>i, (.N/nrow(list2_dtbl_rearranged))*100, by=treatment][, Treshold:=i]
+          } else {
+            fig6_piecharts_tresholds<-rbind(fig6_piecharts_tresholds, list2_dtbl_long[predictions>i, (.N/nrow(list2_dtbl_rearranged))*100, by=treatment][, Treshold:=i])
+          }}
+        fig6_piecharts_tresholds[, treatment:=unlist(strsplit(treatment, "_"))[2], by=1:nrow(fig6_piecharts_tresholds)]
+        fig6_piecharts_tresholds[treatment=="sri", treatment:="SRI"]; fig6_piecharts_tresholds[treatment=="fur", treatment:="FUr"]; fig6_piecharts_tresholds[treatment=="dap", treatment:="DAP"] 
+        fig6_piecharts_tresholds$Treshold<-as.factor(fig6_piecharts_tresholds$Treshold)
+        setnames(fig6_piecharts_tresholds, c("V1", "Treshold"), c("% Mutations", "Threshold(%)"))
+```
+Compute the %mutation >RT treshold when considering any of the eight drugs, using the 'list2_dtbl_rearranged'. Store the info in tmp dataset, and then rbind it with fig6_piecharts_tresholds.
+
+```
+          tmp<-as.data.frame(data.table(treatment="All_drugs", "% Mutations"=100, "Threshold(%)"=10))
+          for (i in 1:6){
+            tmp[i,1]<-"All_drugs"
+            tmp[i,2]<-(list2_dtbl_rearranged[predictions_CC90009>i | predictions_G418>i | predictions_Clitocine>i | predictions_dap>i | predictions_SJ6986>i | predictions_sri>i, .N]/nrow(list2_dtbl_rearranged))*100
+            tmp[i,3]<-i
+          }
+          
+  fig6_piecharts_tresholds<-rbind(fig6_piecharts_tresholds, tmp)
+```
+
+Now, 'fig6_piecharts_tresholds' has all the info to plot Fig.6c. 
+Alternatively, directly load the 'fig6_piecharts_tresholds' object from base_dir:
+
+```
+  fig6_piecharts_tresholds<-readRDS(file = file.path(base_dir, "Fig6_insilico_saturation_mutagenesis/fig6_piecharts_tresholds.rds"))
+
+```
+
+
+Plot it:
+
+```
+  ggplot(fig6_piecharts_tresholds[!treatment%chin%c("FUr", "Gentamicin")],aes(x=treatment, y=`% Mutations`, fill=`Threshold(%)`)) + geom_bar(stat="identity", position = "dodge") + 
+      p + thresholds_fills + theme(axis.text.x = element_text(size=15, angle=90, hjust=1, vjust=0.5), axis.title.x = element_blank(), legend.position = "top") 
+```    
+
+
+**Fig.6d:** Pie chart showing the percentage of mutations across the insilico exome-wide dataset maximally stimulated by each drug. We have to use list2_dtbl_long (generated for Fig.6c), and the info is stored in 'drugs_insilico_overview' object:
+
+``` 
+        list2_dtbl_long <- list2_dtbl_long[order(list2_dtbl_long$predictions, decreasing = TRUE), ]  # Top N highest values by group
+        list2_dtbl_long <- data.table(list2_dtbl_long, key = "nt_seq")
+        list2_dtbl_long <- list2_dtbl_long[ , head(.SD, 1), by = nt_seq]
+
+        drugs_insilico_overview<-as.data.table(list2_dtbl_long %>% group_by(treatment) %>% summarise(n=n()) %>% ungroup())
+        drugs_insilico_overview <- as.data.table(drugs_insilico_overview %>% 
+          arrange(desc(treatment)) %>%
+          mutate(prop = n / sum(drugs_insilico_overview$n) *100) %>%
+          mutate(ypos = cumsum(prop)- 0.5*prop ))
+        drugs_insilico_overview$treatment<-as.character(drugs_insilico_overview$treatment)
+        drugs_insilico_overview[, treatment:=unlist(strsplit(treatment, "_"))[2], by=1:nrow(drugs_insilico_overview)]
+        drugs_insilico_overview[treatment=="sri", treatment:="SRI"]
+        drugs_insilico_overview[treatment=="fur", treatment:="FUr"]
+        drugs_insilico_overview[treatment=="dap", treatment:="DAP"] 
+        
+    # Eliminate the Gentamicin predictions from drugs_insilico_overview because the r2 of the predictive model is 0.38 -> the predictions can't be trusted.
+        
+        drugs_insilico_overview<-drugs_insilico_overview[treatment!="Gentamicin"]
+``` 
+
+Alternatively, directly load the 'drugs_insilico_overview.rds' object from base_dir:
+
+```
+  drugs_insilico_overview<-readRDS(file = file.path(base_dir, "Fig6_insilico_saturation_mutagenesis/drugs_insilico_overview.rds"))
+
+```
+
+
+Plot:
+
+``` 
+ggplot(drugs_insilico_overview, aes(x="", y=prop, fill=treatment, color=treatment)) + geom_bar(stat="identity", width=1) +
+      coord_polar("y", start=0) + drugs_fills + drugs_colors + theme_void() + p_var1 +
+      geom_text(aes(y = ypos, label = paste0(round(prop,1), "%")), color = "black", size=5) + ggtitle("Best drug genome-wide")
+```      
+
+**Fig.6e:** For each drug, show a cumulative count distribution: the number of PTCs as a function of predicted readthrough for TP53, PTEN and DMD. Info stored in 'fig6_cumulativeRT_dtbl'.
+
+``` 
+    list_genes<-list()
+        list_genes[[1]]<-as.data.table(list2_dtbl[gene=="TP53" & stop_type=="tga"])
+        list_genes[[2]]<-as.data.table(list2_dtbl[gene=="TP53" & stop_type=="tag"])
+        list_genes[[3]]<-as.data.table(list2_dtbl[gene=="TP53" & stop_type=="taa"])
+        list_genes[[4]]<-as.data.table(list2_dtbl[gene=="PTEN" & stop_type=="tga"])
+        list_genes[[5]]<-as.data.table(list2_dtbl[gene=="PTEN" & stop_type=="tag"])
+        list_genes[[6]]<-as.data.table(list2_dtbl[gene=="PTEN" & stop_type=="taa"])
+        list_genes[[7]]<-as.data.table(list2_dtbl[gene=="DMD" & stop_type=="tga"])
+        list_genes[[8]]<-as.data.table(list2_dtbl[gene=="DMD" & stop_type=="tag"])
+        list_genes[[9]]<-as.data.table(list2_dtbl[gene=="DMD" & stop_type=="taa"])
+        
+        for (i in 1:length(list_genes)){
+          list_genes[[i]]<-as.data.table(gather(list_genes[[i]], treatment, predicted, colnames(list_genes[[i]][,15:22]), factor_key=TRUE))
+          list_genes[[i]][, treatment:=unlist(str_split(treatment, "predictions_"))[2], by=1:nrow(list_genes[[i]])]
+        }
+        
+        
+        list_genes_B<-list()
+        for (j in 1:length(list_genes)){
+          treatment_cols<-levels(list_genes[[j]]$treatment)
+          for (i in 1:length(treatment_cols)){
+            temp<-as.data.table(list_genes[[j]][treatment==treatment_cols[i], sort(predicted, decreasing=T)])
+            temp[ ,c("# PTCs", "treatment"):=.(1:nrow(temp), rep(treatment_cols[i], nrow(temp)))]
+            if (i==1){
+              temp2<-temp
+            } else {
+              temp2<-rbind(temp2, temp)
+            }}
+          temp2$gene<-unique(list_genes[[j]]$gene)
+          temp2$stop_type<-unique(list_genes[[j]]$stop_type)
+          setnames(temp2, "V1", "Predicted")
+          list_genes_B[[j]]<-temp2
+        }
+        
+        fig6_cumulativeRT_dtbl<-list_genes_B[[1]]
+        for (i in 2:length(list_genes_B)){
+          fig6_cumulativeRT_dtbl<-rbind(fig6_cumulativeRT_dtbl, list_genes_B[[i]])
+        }
+        
+        fig6_cumulativeRT_dtbl[, gene_stoptype:=paste0(gene, " ", toupper(stop_type))]
+        
+        fig6_cumulativeRT_dtbl[treatment=="fur",treatment:="FUr"]
+        fig6_cumulativeRT_dtbl[treatment=="sri",treatment:="SRI"] 
+        fig6_cumulativeRT_dtbl[treatment=="dap",treatment:="DAP"]
+ 
+ ```     
+Alternatively, directly load the 'fig6_cumulativeRT_dtbl.rds' object from base_dir:
+
+```
+  fig6_cumulativeRT_dtbl<-readRDS(file = file.path(base_dir, "Fig6_insilico_saturation_mutagenesis/fig6_cumulativeRT_dtbl.rds"))
+
+```
+
+Plot:
+
+``` 
+ggplot(fig6_cumulativeRT_dtbl[!treatment%chin%c("FUr", "Gentamicin")], aes(y=`# PTCs`, x=Predicted, colour=treatment))+ geom_line(size=1)+ 
+        facet_wrap(~gene_stoptype, scale="free") + xlab("Predicted readthrough (%)") + drugs_colors +
+        theme(text = element_text(size=20), legend.title = element_text(size=12), legend.text = element_text(size=12), legend.position = "top", plot.title = element_text(hjust = 0.5),  strip.text = element_text(size = 15), axis.text.x=element_text(size=12), axis.text.y=element_text(size=12), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"), strip.background = element_rect(color="white", fill="white", size=0, linetype="solid")) + p
+    
+``` 
+
+**Extended Data Fig.6b:** Ataluren clinical trials:
+
+
+Load 'treated_samples' datatable and define a new setting for the plots (named 'p_var2'):
+```
+    treated_samples<-readRDS(file = "~/R/RT/Disease_PTCs/Disease_objects/treated_samples.rds") 
+        
+p_var2<-theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.text = element_text(size=12), legend.title = element_text(size=12),  legend.key.size = unit(.2, 'cm'), axis.title.x = element_blank(), axis.title.y = element_blank(), strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"), legend.key=element_rect(fill="white"), panel.grid.major = element_blank(), panel.spacing.y = unit(.5, "lines"), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+```
+
+Plot:
+
+
+```
+p1<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="CFTR"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
+        geom_jitter(data = treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="CFTR"], aes(group=clinical_trial, color=clinical_trial), size=1, alpha=0.9, width = .25) +
+        labs(x="Stop type", y="Readthrough (%)", title="Clinical trial: NCT00458341\nDrug: Ataluren, Gene: CFTR") + p_var2 + guides(colour = guide_legend(override.aes = list(size=2.5))) +
+        theme(plot.margin = unit(c(.5, 2, .5, .5), "lines"), axis.text.x=element_text(angle=90, hjust = 1)) + scale_color_manual(values = c("#5ab4ac", "#8E679F"), name = "Included in Clinical Trial", labels = c("Yes", "No"))
+      
+      p2<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="DMD"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
+        geom_jitter(data = treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="DMD"], aes(group=clinical_trial, color=clinical_trial), size=1, alpha=0.9, width = .25) +
+        labs(x="Stop type", y="Readthrough (%)", title="Clinical trial: NCT00264888\nDrug: Ataluren, Gene: DMD") + p_var2 + guides(colour = guide_legend(override.aes = list(size=2.5))) +
+        theme(plot.margin = unit(c(.5, 2, .5, .5), "lines"), axis.text.x=element_text(angle=90, hjust = 1)) + scale_color_manual(values = c("#5ab4ac", "#8E679F"), name = "Included in Clinical Trial", labels = c("Yes", "No"))
+   
+   
+    p5<-ggarrange(p3, p4, nrow=2, ncol=1, common.legend=T, legend="bottom")
+        annotate_figure(p5, left = textGrob("Readthrough (%)", rot = 90, vjust = .5, gp = gpar(fontsize = 17)))
+
+```       

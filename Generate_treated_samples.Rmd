@@ -38,6 +38,8 @@ library(ggridges)
 library(hrbrthemes)
 library(glmnet)
 library(spgs)
+library(BiocManager)
+library(biomaRt)
 
 ```
 

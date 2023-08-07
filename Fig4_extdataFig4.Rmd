@@ -68,7 +68,7 @@ Alternatively, you can load the already generated models.rds and 'all_drugs_pred
 Plot:
 
 ```
-ggplot(all_drugs_predictions[!treatment%chin%c("Untreated", "FUr", "Gentamicin")]) + geom_hex(aes(y=observed, x=predicted), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + labs(y="Observed", x="Predicted") + stat_cor(aes(y=observed, x=predicted, label = ..rr.label..), size=4, label.y.npc=c(1,1)) +
+ggplot(all_drugs_predictions[!treatment%chin%c("Untreated", "FUr", "Gentamicin")]) + geom_hex(aes(y=observed, x=predicted), bins=70) + scale_fill_viridis(limits = c(0, 50), oob = scales::squish, alpha = 0.85) + labs(y="Observed", x="Predicted") + stat_cor(aes(y=observed, x=predicted, label = ..rr.label..), size=4, label.y.npc=c(1,1)) +
           p + theme(panel.spacing.y = unit(.5, "lines"), legend.position = "none", text = element_text(size = 15), axis.title.x = element_text(size=15), axis.title.y = element_text(size=15)) +
           facet_wrap(~treatment, nrow=3, scales = "free") 
 ```

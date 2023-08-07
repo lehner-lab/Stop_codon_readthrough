@@ -48,13 +48,12 @@ Using the saveRDS function models can be stored in the 'generated_drugspecific_m
       
       all_drugs_predictions<-data.frame()
       for (j in 1:length(drugs)){all_drugs_predictions<-rbind(all_drugs_predictions, llista[[j]])}
+      all_drugs_predictions<-as.data.table(all_drugs_predictions)
 ```
 
 Alternatively, you can load the already generated models.rds and 'all_drugs_predictions' objects from base_dir:
 
 ```
- treated_samples<-readRDS(file = file.path(base_dir, "treated_samples.rds"))
-
   model_nt123_Clitocine<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_Clitocine.rds"))
   model_nt123_DAP<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_DAP.rds"))
   model_nt123_G418<-readRDS(file = file.path(base_dir, "Fig4/Models/Drug_specific_models/model_nt123_G418.rds"))

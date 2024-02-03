@@ -30,6 +30,7 @@ conda install -c bioconda bioconductor-biomart
 conda install -c bioconda bioconductor-rtracklayer
 conda install conda-forge::r-gridgraphics
 ```
+Alternatively load the 'RT_diseasePTCs.yml' which contains the conda environment already generated.
 
 # Usage
 

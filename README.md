@@ -17,7 +17,7 @@ To run the Stop_codon_readthrough pipeline you will need the following software 
 
 # Required Data
 
-Read counts (DiMSum output), readthrough efficiencies, and required miscellaneous files should be downloaded from **[here](https://crgcnag-my.sharepoint.com/:f:/g/personal/itoledano_crg_es/Eszq0KwHEq5Lt-NNghiRmzIBtL_MdXLKtIitmotN8VWoaQ?e=CLSl2m)** to your project directory (named 'base_dir') i.e. where output files should be written.
+Read counts (DiMSum output), readthrough efficiencies, and required miscellaneous files should be downloaded from **[here](https://figshare.com/account/home)** to your project directory (named 'base_dir') i.e. where output files should be written.
 
 # Installation Instructions
 

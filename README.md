@@ -13,7 +13,7 @@ Here you'll find source code for computational analyses and to reproduce the fig
 
 To run the Stop_codon_readthrough pipeline you will need the following software and associated packages:
 
-* **[_R_](https://www.r-project.org/)** (dplyr, stringr, stringi, GGally, ggpubr, ggplot2, viridis, tidyverse, seqinr, matrixStats, data.table, rtracklayer, openxlsx, reshape2, caret, hexbin, png, grid, gridExtra, MuMIn, tidyr, rstatix, ggridges, hrbrthemes, glmnet, spgs)
+* **[_R_](https://www.r-project.org/)** (dplyr, stringr, stringi, GGally, ggpubr, ggplot2, viridis, tidyverse, seqinr, matrixStats, data.table, rtracklayer, openxlsx, reshape2, caret, hexbin, png, grid, gridExtra, MuMIn, tidyr, rstatix, ggridges, hrbrthemes, glmnet, spgs, ggtext, devtools, ggdendroplot, UpSetR)
 
 # Required Data
 
@@ -25,7 +25,10 @@ Make sure you have git and conda installed and then run (expected install time <
 
 ```
 # Install dependencies (preferably in a fresh conda environment)
-conda install -c conda-forge r-dplyr, r-stringr, r-stringi, r-ggally, r-ggpubr, r-ggplot2, r-viridis, r-tidyverse, r-seqinr, r-matrixstats, r-data.table, r-rtracklayer, r-openxlsx, r-reshape2, r-caret, r-hexbin, r-png, r-grid, r-gridextra, r-mumin, r-tidyr, r-rstatix, r-ggridges, r-hrbrthemes, r-glmnet, r-spgs, r-biocmanager, r-biomart
+conda install -c conda-forge r-dplyr, r-stringr, r-stringi, r-ggally r-ggpubr r-ggplot2 r-viridis r-tidyverse r-seqinr r-matrixstats r-data.table r-openxlsx r-reshape2 r-caret r-hexbin r-png r-gridextra r-mumin r-tidyr r-rstatix r-ggridges r-hrbrthemes r-glmnet r-spgs r-ggtext r-devtools r-UpSetR r-biocmanager
+conda install -c bioconda bioconductor-biomart
+conda install -c bioconda bioconductor-rtracklayer
+conda install conda-forge::r-gridgraphics
 ```
 
 # Usage

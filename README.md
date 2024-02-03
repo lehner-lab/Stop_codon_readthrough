@@ -17,7 +17,7 @@ To run the Stop_codon_readthrough pipeline you will need the following software 
 
 # Required Data
 
-Read counts (DiMSum output), readthrough efficiencies, and required miscellaneous files should be downloaded from **[Main dataset and other files](https://figshare.com/articles/dataset/Other_objects/25138712)**, **[Fig.1](https://figshare.com/articles/dataset/Fig_1_Files/25138625)**, **[Fig.2](https://figshare.com/articles/dataset/Fig_2_files/25138685)**, **[Fig.3](https://figshare.com/articles/dataset/Fig_3_Files/25138688)**, **[Fig.4](https://figshare.com/articles/dataset/Fig_4_Files/25138691)**, **[Fig.5](https://figshare.com/articles/dataset/Fig_5_Files/25138697)** and **[Fig.6](https://figshare.com/articles/dataset/Fig_6_Files/25139210)** to your project directory (named 'base_dir') i.e. where output files should be written.
+Read counts (DiMSum output), readthrough efficiencies, and required miscellaneous files should be downloaded from **[Main dataset and other files](https://figshare.com/articles/dataset/Other_objects/25138712)**, **[Fig.1](https://figshare.com/articles/dataset/Fig_1_Files/25138625)**, **[Fig.2](https://figshare.com/articles/dataset/Fig_2_files/25138685)**, **[Fig.3](https://figshare.com/articles/dataset/Fig_3_Files/25138688)**, **[Fig.4](https://figshare.com/articles/dataset/Fig_4_Files/25138691)**, **[Fig.5](https://figshare.com/articles/dataset/Fig_5_Files/25138697)** and **[Fig.6](https://figshare.com/articles/dataset/Fig_6_Files/25139210)** (files are organised based on the Figure they are used in) to your project directory (named 'base_dir') i.e. where output files should be written.
 
 # Installation Instructions
 

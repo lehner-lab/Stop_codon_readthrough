@@ -1,0 +1,426 @@
+---
+title: "Fig6"
+output: html_document
+---
+
+**All scripts for the generation of the NTCs datatable can be skipped by directly loading it from your base dir:**
+ 
+``` 
+  NTCs<-readRDS(file = file.path(base_dir, "NTCs.rds"))
+```
+
+**If the user wants to generate it step by step, then:**
+Load the Dimsum table with variant counts across bins:
+```
+  load(file = file.path(base_dir, "./dimsum_naturalstops_variant_data_merge.RData"))
+  natural_stops<-as.data.table(variant_data_merge)
+  ```
+
+Remove unnecessary columns:
+```  
+  natural_stops<-natural_stops[, !c("WT", "STOP", "STOP_readthrough", "barcode_valid", "constant_region", "permitted", "too_many_substitutions", "mixed_substitutions")]
+```
+Set new column names:
+```  
+  newnames<-c() 
+  for(k in 1:length(colnames(natural_stops))){
+    newnames<-c(newnames, unlist(strsplit(colnames(natural_stops)[k], "_e1"))[1])}
+  colnames(natural_stops)<-newnames
+```
+
+Create 18 subdatatables, each with the data of one replicate and one drug:
+```  
+  nat_clitocine_r1<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "Cli0r1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_clitocine_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_clitocine_r1)[k], "0"))[2])}; colnames(nat_clitocine_r1)<-newnames
+  nat_clitocine_r2<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "Cli0r2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_clitocine_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_clitocine_r2)[k], "0"))[2])}; colnames(nat_clitocine_r2)<-newnames
+  
+  nat_DAP_r1<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "DAP0r1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_DAP_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_DAP_r1)[k], "0"))[2])}; colnames(nat_DAP_r1)<-newnames
+  nat_DAP_r2<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "DAP0r2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_DAP_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_DAP_r2)[k], "0"))[2])}; colnames(nat_DAP_r2)<-newnames
+  
+  nat_G418_r1<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "G4180r1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_G418_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_G418_r1)[k], "0"))[2])}; colnames(nat_G418_r1)<-newnames
+  nat_G418_r2<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "G4180r2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_G418_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_G418_r2)[k], "0"))[2])}; colnames(nat_G418_r2)<-newnames
+  
+  nat_SJ6986_r1<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "SJ69860r1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_SJ6986_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_SJ6986_r1)[k], "0"))[2])}; colnames(nat_SJ6986_r1)<-newnames
+  nat_SJ6986_r2<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "SJ69860r2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_SJ6986_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_SJ6986_r2)[k], "0"))[2])}; colnames(nat_SJ6986_r2)<-newnames
+  
+  nat_sri_r1<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "SRI0r1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_sri_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_sri_r1)[k], "0"))[2])}; colnames(nat_sri_r1)<-newnames
+  nat_sri_r2<-natural_stops[, .SD, .SDcols = names(natural_stops) %like% "SRI0r2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(nat_sri_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(nat_sri_r2)[k], "0"))[2])}; colnames(nat_sri_r2)<-newnames
+  
+ ```
+  
+
+Create the columns 'reads_allbins' (read count for each variant across bins), 'treatment' and 'replicate':
+```
+  nat_clitocine_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(nat_clitocine_r1)][, c("treatment", "replicate"):=.("Clitocine", 1)]
+  nat_clitocine_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(nat_clitocine_r2)][, c("treatment", "replicate"):=.("Clitocine", 2)]
+  nat_DAP_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(nat_DAP_r1)][, c("treatment", "replicate"):=.("DAP", 1)]
+  nat_DAP_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(nat_DAP_r2)][, c("treatment", "replicate"):=.("DAP", 2)]
+  nat_G418_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7)), by=1:nrow(nat_G418_r1)][, c("treatment", "replicate"):=.("G418", 1)]
+  nat_G418_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7)), by=1:nrow(nat_G418_r2)][, c("treatment", "replicate"):=.("G418", 2)]
+  nat_SJ6986_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7, r1p8)), by=1:nrow(nat_SJ6986_r1)][, c("treatment", "replicate"):=.("SJ6986", 1)]
+  nat_SJ6986_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7, r2p8)), by=1:nrow(nat_SJ6986_r2)][, c("treatment", "replicate"):=.("SJ6986", 2)]
+  nat_sri_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(nat_sri_r1)][, c("treatment", "replicate"):=.("SRI", 1)]
+  nat_sri_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(nat_sri_r2)][, c("treatment", "replicate"):=.("SRI", 2)]
+  ```
+
+
+Define the mean mCherry value of each gate, for each of the the drug experiments, and normalise it to the mean mCherry value of the non-PTC control variant:
+The mean mCherry values of each gate for each drug are stored in 'gates_boundaries' file. Load it: 
+```  
+  gates_boundaries_natstops<-as.data.table(read.xlsx(file = file.path(base_dir, "./gates_boundaries_natstops"), sheet = 1)) 
+  
+  clitocine_bins<-gates_boundaries_natstops[Drug=="Clitocine", round(((Mean_value)/3400)*100,2)]
+  DAP_bins<-gates_boundaries_natstops[Drug=="DAP", round(((Mean_value)/3400)*100,2)]
+  G418_bins<-gates_boundaries_natstops[Drug=="G418", round(((Mean_value)/3400)*100,2)]
+  SJ6986_bins<-gates_boundaries_natstops[Drug=="SJ6986", round(((Mean_value)/3600)*100,2)]
+  sri_r1_bins<-gates_boundaries_natstops[Drug=="sri" & Replicate==1, round(((Mean_value)/3400)*100,2)]
+  sri_r2_bins<-gates_boundaries_natstops[Drug=="sri" & Replicate==2, round(((Mean_value)/3400)*100,2)]
+  
+  
+
+  nat_clitocine_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.16, (r1p5/(sum(r1p5)))*0.105, (r1p6/(sum(r1p6)))*0.122, (r1p7/(sum(r1p7)))*0.048, (r1p8/(sum(r1p8)))*0.017)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(nat_clitocine_r1)][, fitness_rep:=((r1p4_norm*clitocine_bins[1] + r1p5_norm*clitocine_bins[2] + r1p6_norm*clitocine_bins[3] + r1p7_norm*clitocine_bins[4] + r1p8_norm*clitocine_bins[5])/sum_normreads), by=1:nrow(nat_clitocine_r1)]   
+  nat_clitocine_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.138, (r2p5/(sum(r2p5)))*0.08, (r2p6/(sum(r2p6)))*0.125, (r2p7/(sum(r2p7)))*0.079, (r2p8/(sum(r2p8)))*0.032)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(nat_clitocine_r2)][, fitness_rep:=((r2p4_norm*clitocine_bins[1] + r2p5_norm*clitocine_bins[2] + r2p6_norm*clitocine_bins[3] + r2p7_norm*clitocine_bins[4] + r2p8_norm*clitocine_bins[5])/sum_normreads), by=1:nrow(nat_clitocine_r2)]    
+  
+  nat_DAP_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.28, (r1p5/(sum(r1p5)))*0.047, (r1p6/(sum(r1p6)))*0.067, (r1p7/(sum(r1p7)))*0.1, (r1p8/(sum(r1p8)))*0.046)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(nat_DAP_r1)][, fitness_rep:=((r1p4_norm*DAP_bins[1] + r1p5_norm*DAP_bins[2] + r1p6_norm*DAP_bins[3] + r1p7_norm*DAP_bins[4] + r1p8_norm*DAP_bins[5])/sum_normreads), by=1:nrow(nat_DAP_r1)]     
+  nat_DAP_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.28, (r2p5/(sum(r2p5)))*0.047, (r2p6/(sum(r2p6)))*0.067, (r2p7/(sum(r2p7)))*0.1, (r2p8/(sum(r2p8)))*0.046)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(nat_DAP_r2)][, fitness_rep:=((r2p4_norm*DAP_bins[1] + r2p5_norm*DAP_bins[2] + r2p6_norm*DAP_bins[3] + r2p7_norm*DAP_bins[4] + r2p8_norm*DAP_bins[5])/sum_normreads), by=1:nrow(nat_DAP_r2)]     
+  
+  nat_G418_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.209, (r1p5/(sum(r1p5)))*0.103, (r1p6/(sum(r1p6)))*0.058, (r1p7/(sum(r1p7)))*0.03, (r1p8/(sum(r1p8)))*0.022)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(nat_G418_r1)][, fitness_rep:=((r1p4_norm*G418_bins[1] + r1p5_norm*G418_bins[2] + r1p6_norm*G418_bins[3] + r1p7_norm*G418_bins[4] + r1p8_norm*G418_bins[5])/sum_normreads), by=1:nrow(nat_G418_r1)]     
+  nat_G418_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.209, (r2p5/(sum(r2p5)))*0.103, (r2p6/(sum(r2p6)))*0.058, (r2p7/(sum(r2p7)))*0.03, (r2p8/(sum(r2p8)))*0.022)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(nat_G418_r2)][, fitness_rep:=((r2p4_norm*G418_bins[1] + r2p5_norm*G418_bins[2] + r2p6_norm*G418_bins[3] + r2p7_norm*G418_bins[4] + r2p8_norm*G418_bins[5])/sum_normreads), by=1:nrow(nat_G418_r2)]     
+  
+  nat_SJ6986_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.097, (r1p5/(sum(r1p5)))*0.071, (r1p6/(sum(r1p6)))*0.097, (r1p7/(sum(r1p7)))*0.101, (r1p8/(sum(r1p8)))*0.09)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(nat_SJ6986_r1)][, fitness_rep:=((r1p4_norm*SJ6986_bins[1] + r1p5_norm*SJ6986_bins[2] + r1p6_norm*SJ6986_bins[3] + r1p7_norm*SJ6986_bins[4] + r1p8_norm*SJ6986_bins[5])/sum_normreads), by=1:nrow(nat_SJ6986_r1)]     
+  nat_SJ6986_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.097, (r2p5/(sum(r2p5)))*0.071, (r2p6/(sum(r2p6)))*0.097, (r2p7/(sum(r2p7)))*0.101, (r2p8/(sum(r2p8)))*0.09)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(nat_SJ6986_r2)][, fitness_rep:=((r2p4_norm*SJ6986_bins[1] + r2p5_norm*SJ6986_bins[2] + r2p6_norm*SJ6986_bins[3] + r2p7_norm*SJ6986_bins[4] + r2p8_norm*SJ6986_bins[5])/sum_normreads), by=1:nrow(nat_SJ6986_r2)]     
+  
+  nat_sri_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.07, (r1p5/(sum(r1p5)))*0.104, (r1p6/(sum(r1p6)))*0.125, (r1p7/(sum(r1p7)))*0.08, (r1p8/(sum(r1p8)))*0.044)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(nat_sri_r1)][, fitness_rep:=((r1p4_norm*sri_r1_bins[1] + r1p5_norm*sri_r1_bins[2] + r1p6_norm*sri_r1_bins[3] + r1p7_norm*sri_r1_bins[4] + r1p8_norm*sri_r1_bins[5])/sum_normreads), by=1:nrow(nat_sri_r1)]     
+  nat_sri_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.082, (r2p5/(sum(r2p5)))*0.089, (r2p6/(sum(r2p6)))*0.1, (r2p7/(sum(r2p7)))*0.067, (r2p8/(sum(r2p8)))*0.023)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(nat_sri_r2)][, fitness_rep:=((r2p4_norm*sri_r2_bins[1] + r2p5_norm*sri_r2_bins[2] + r2p6_norm*sri_r2_bins[3] + r2p7_norm*sri_r2_bins[4] + r2p8_norm*sri_r2_bins[5])/sum_normreads), by=1:nrow(nat_sri_r2)]     
+  
+```  
+Remove the 'r1' or 'r2' of the column names, to be able to merge all the datatables in one:
+
+```  
+  cnames_long<-c("nt_seq", "aa_seq", "p4", "p5", "p6", "p7", "p8", "reads_allbins", "treatment", "replicate", "p4_norm", "p5_norm", "p6_norm", "p7_norm", "p8_norm", "sum_normreads", "fitness_rep")
+  
+  colnames(nat_clitocine_r1)<-cnames_long; colnames(nat_clitocine_r2)<-cnames_long
+  colnames(nat_DAP_r1)<-cnames_long; colnames(nat_DAP_r2)<-cnames_long
+  colnames(nat_sri_r1)<-cnames_long; colnames(nat_sri_r2)<-cnames_long
+  colnames(nat_G418_r1)<-cnames_long; colnames(nat_G418_r2)<-cnames_long
+  colnames(nat_SJ6986_r1)<-cnames_long; colnames(nat_SJ6986_r2)<-cnames_long
+
+```  
+
+Merge the two replicates of each treatment in one datatable and calculate the mean readthrough efficiency and the sdeviation ('RT' and 'sd_RT' columns). 
+```  
+  nat_clito<-rbind(nat_clitocine_r1, nat_clitocine_r2); nat_clito[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  nat_dap<-rbind(nat_DAP_r1, nat_DAP_r2); nat_dap[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  nat_sri<-rbind(nat_sri_r1, nat_sri_r2); nat_sri[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  nat_G418<-rbind(nat_G418_r1, nat_G418_r2); nat_G418[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+  nat_SJ<-rbind(nat_SJ6986_r1, nat_SJ6986_r2); nat_SJ[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+ 
+```    
+  
+Unify the 9 datasets of each replicate into NTCs datatable:
+```  
+
+   NTCs<-rbind(nat_sri, rbind(nat_SJ, rbind(nat_G418, rbind(nat_dap, nat_clito))))
+```  
+RT binomial:
+```  
+  NTCs[, RT_binomial:=RT/100]
+  ```  
+Calculate the interreplicate correlations for both concentrations:
+Store the variants in the 'c' datasets. Then join them into interreplicate_correlations_natstops dtbl, and plot:
+```    
+  n=10
+
+  a1<-NTCs[replicate==2 & treatment=="Clitocine" & reads_allbins>n, fitness_rep]
+  b1<-NTCs[replicate==1 & treatment=="Clitocine" & nt_seq%chin%c(NTCs[replicate==2 & treatment=="Clitocine" & reads_allbins>n, nt_seq]), fitness_rep]
+  c1<-data.frame(rep1=b1, rep2=a1, treatment="Clitocine")
+  
+  a1<-NTCs[replicate==2 & treatment=="DAP" & reads_allbins>n, fitness_rep]
+  b1<-NTCs[replicate==1 & treatment=="DAP" & nt_seq%chin%c(NTCs[replicate==2 & treatment=="DAP" & reads_allbins>n, nt_seq]), fitness_rep]
+  c2<-data.frame(rep1=b1, rep2=a1, treatment="DAP")
+  
+  a1<-NTCs[replicate==2 & treatment=="G418" & reads_allbins>n, fitness_rep]
+  b1<-NTCs[replicate==1 & treatment=="G418" & nt_seq%chin%c(NTCs[replicate==2 & treatment=="G418" & reads_allbins>n, nt_seq]), fitness_rep]
+  c3<-data.frame(rep1=b1, rep2=a1, treatment="G418")
+  
+  a1<-NTCs[replicate==2 & treatment=="SJ6986" & reads_allbins>n, fitness_rep]
+  b1<-NTCs[replicate==1 & treatment=="SJ6986" & nt_seq%chin%c(NTCs[replicate==2 & treatment=="SJ6986" & reads_allbins>n, nt_seq]), fitness_rep]
+  c4<-data.frame(rep1=b1, rep2=a1, treatment="SJ6986")
+  
+  a1<-NTCs[replicate==2 & treatment=="SRI" & reads_allbins>n, fitness_rep]
+  b1<-NTCs[replicate==1 & treatment=="SRI" & nt_seq%chin%c(NTCs[replicate==2 & treatment=="SRI" & reads_allbins>n, nt_seq]), fitness_rep]
+  c5<-data.frame(rep1=b1, rep2=a1, treatment="SRI")
+  
+  ```    
+Factorize the treatment column: 
+```    
+  interreplicate_correlations_natstops<-rbind(rbind(rbind(rbind(c1,c2), c3), c4), c5)
+  interreplicate_correlations_natstops$treatment<-as.factor(interreplicate_correlations_natstops$treatment)
+  interreplicate_correlations_natstops$treatment <- factor(interreplicate_correlations_natstops$treatment, levels=c("Clitocine", "DAP", "G418", "SJ6986", "SRI"))
+```  
+Plot:
+```  
+  ggplot(interreplicate_correlations_natstops) + geom_hex(aes(y=rep1, x=rep2), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+    theme(strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"), panel.spacing.y = unit(.5, "lines"),
+          legend.position = "none", text = element_text(size = 20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20), plot.title = element_text(hjust = 0.5, size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + facet_wrap(~treatment, nrow=2, scales = "free") + labs(y="Replicate 1", x="Replicate 2") + stat_cor(aes(y=rep1, x=rep2, label = ..r.label..), size=6, label.y.npc=c(1,1)) 
+```    
+  
+Merge with reference_transcripts dtbl, to incorporate sequence information for each variant. This table was generated during library design and contains diverse info for each variant.
+Change the 'nt_seq' column of NTCs to 'variant', to allow the merging withthe reference_transcripts dtbl.
+```
+    reference_transcripts<-as.data.table(readRDS(file = file.path(base_dir, "reference_transcripts.rds")))
+    setnames(NTCs, "nt_seq", "variant")
+    a<-unique(reference_transcripts) # to remove the duplicated WT_TP53 entries!
+    a[, variant:=tolower(variant)]
+    NTCs<-left_join(NTCs, a[, c("hgnc_symbol", "ensembl_transcript_id", "variant", "stop_downstream", "dist_to_downstreamstop", "stop_type", "plus_one", "plus_two", "plus_three", "plus_four", "plus_five", "plus_six", "upstream_codon")], by="variant")
+ ``` 
+Tolower some columns:
+```  
+    NTCs[, stop_type:=tolower(stop_type)]
+    NTCs[, plus_one:=tolower(plus_one)]
+    NTCs[, plus_two:=tolower(plus_two)]
+    NTCs[, plus_three:=tolower(plus_three)]
+    NTCs[, plus_four:=tolower(plus_four)]
+    NTCs[, plus_five:=tolower(plus_five)]
+    NTCs[, plus_six:=tolower(plus_six)]
+    NTCs[, upstream_codon:=tolower(upstream_codon)]
+```    
+Change all Ts for Us, because we are working at the RNA level:
+```
+    NTCs[, stop_type := str_replace_all(stop_type, "t", "u")]
+    NTCs[, plus_one := str_replace_all(plus_one, "t", "u")]
+    NTCs[, plus_two := str_replace_all(plus_two, "t", "u")]
+    NTCs[, plus_three := str_replace_all(plus_three, "t", "u")]
+    NTCs[, plus_four := str_replace_all(plus_four, "t", "u")]
+    NTCs[, plus_five := str_replace_all(plus_five, "t", "u")]
+    NTCs[, plus_six := str_replace_all(plus_six, "t", "u")]
+    NTCs[, upstream_codon := str_replace_all(upstream_codon, "t", "u")]
+```    
+Rename some columns:
+```
+    setnames(NTCs, c("stop_downstream", "dist_to_downstreamstop", "plus_one", "plus_two", "plus_three", "plus_four", "plus_five", "plus_six", "upstream_codon"), c("stop_downstream", "dist_to_downstreamstop", "down_1nt", "down_12nt", "down_123nt", "down_1234nt", "down_12345nt", "down_123456nt", "up_123nt"))
+```  
+Set to NA the few entries with abnormal values in the predictive features columns (basically those variants whose 3'UTR length <3nts):
+```
+    NTCs[nchar(down_123nt)!=3, c("down_123nt", "down_1234nt", "down_12345nt", "down_123456nt"):=.(NA, NA, NA, NA)]
+    NTCs[nchar(up_123nt)!=3, up_123nt:=NA]
+    NTCs<-NTCs[stop_type!="none"] 
+```
+    
+**Predictions**
+    
+**Load the disease_PTC drug-specific models to predict RT of the natural_stops dataset**.
+ ``` 
+  model_Clitocine<-readRDS(file = file.path(base_dir, "./model_Clitocine.rds"))
+  model_DAP<-readRDS(file = file.path(base_dir, "./model_DAP.rds"))
+  model_G418<-readRDS(file = file.path(base_dir, "./model_G418.rds"))
+  model_SRI<-readRDS(file = file.path(base_dir, "./model_SRI.rds"))
+  model_SJ6986<-readRDS(file = file.path(base_dir, "./model_SJ6986.rds"))
+```
+  
+Break down the natstops into subdtbls by treatment, run predictions for each subdtbl and then join them again. It takes 1.30h aprox.
+```
+  NTCs_Clitocine<-NTCs[treatment=="Clitocine"]
+  NTCs_DAP<-NTCs[treatment=="DAP"]
+  NTCs_G418<-NTCs[treatment=="G418"]
+  NTCs_SRI<-NTCs[treatment=="SRI"]
+  NTCs_SJ6986<-NTCs[treatment=="SJ6986"]
+
+```  
+It takes ~1-1.5h: 
+```
+  
+  for (i in 1:nrow(NTCs_Clitocine)){
+    NTCs_Clitocine$predictions_disease_models[i]<-predict(model_Clitocine, NTCs_Clitocine[i], type = "response")*100
+    if (i%in%c(5000, 10000, 20000, 30000)){print(i)}}
+  
+  for (i in 1:nrow(NTCs_DAP)){
+    NTCs_DAP$predictions_disease_models[i]<-predict(model_DAP, NTCs_DAP[i], type = "response")*100
+    if (i%in%c(5000, 10000, 20000, 30000)){print(i)}}
+  
+  for (i in 1:nrow(NTCs_G418)){
+    NTCs_G418$predictions_disease_models[i]<-predict(model_G418, NTCs_G418[i], type = "response")*100
+    if (i%in%c(5000, 10000, 20000, 30000)){print(i)}}
+ 
+  for (i in 1:nrow(NTCs_SRI)){
+    NTCs_SRI$predictions_disease_models[i]<-predict(model_SRI, NTCs_SRI[i], type = "response")*100
+    if (i%in%c(5000, 10000, 20000, 30000)){print(i)}}
+  
+  for (i in 1:nrow(NTCs_SJ6986)){
+    NTCs_SJ6986$predictions_disease_models[i]<-predict(model_SJ6986, NTCs_SJ6986[i], type = "response")*100
+    if (i%in%c(5000, 10000, 20000, 30000)){print(i)}}
+```  
+  
+Merge them back into NTCs datatable: 
+```  
+    NTCs<-rbind(NTCs_DAP, rbind(NTCs_G418, rbind(NTCs_SRI, rbind(NTCs_SJ6986, NTCs_Clitocine))))
+```    
+Observed vs predicted plot:
+```
+    ggplot(NTCs[reads_allbins>15]) + geom_hex(aes(y=RT, x=predictions_disease_models), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+      theme(strip.background = element_rect(color="white", fill="white", size=0, linetype="solid"), panel.spacing.y = unit(.5, "lines"),
+            legend.position = "none", text = element_text(size = 15), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20), plot.title = element_text(hjust = 0.5), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+      facet_wrap(~treatment, nrow=1, scales = "free") + labs(y="Observed", x="Predicted") + stat_cor(aes(y=RT, x=predictions_disease_models, label = ..rr.label..), size=4, label.y.npc=c(1,1)) + p
+```
+
+**Generate drug-specific models on the natural stops dataset**:  
+ ``` 
+    ## Drug-specific models: this loop runs the model for the 9 drugs and stores the r2s in drug_specific_r2s dataframe.
+    # If we just want to run the model on one drug and don't store the coefficients, just run the 'i' loop and discard the 'j' loop:
+    drugs<-c("G418", "Clitocine", "DAP", "SJ6986", "SRI")
+
+    # Run 10 crossvalidation rounds of the model, calculate the r2 on heldout data (average of the 10 rounds) and plot the predicted vs observed and the residuals:
+    natstops_drug_specific_r2s<-c()
+    llista<-list() # here we store the all_predictions for the 9 drugs, in order to then be able to plot all 9 obs_vs_pred plots at once. Then I do rbind across al 9 llista entries and store the info in all_drugs_predictions (and save the object).
+    for (j in 1:length(drugs)){
+      set.seed(721); training.samples_1 <- NTCs_PTCs[stop_class=="NTCs" & treatment==drugs[j] & replicate==2 & reads_allbins>15 & !is.na(RT), RT_binomial] %>%
+        createDataPartition(p = 0.9, list = FALSE, times=10)
+      R2_1=c()
+      all_predictions<-data.frame()
+      for (i in 1:ncol(training.samples_1)){
+        train.data_1  <- NTCs_PTCs[stop_class=="NTCs" & treatment==drugs[j] & replicate==2 & reads_allbins>15 & !is.na(RT)][training.samples_1[,i], ]
+        test.data_1 <-  NTCs_PTCs[stop_class=="NTCs" & treatment==drugs[j] & replicate==2 & reads_allbins>15 & !is.na(RT)][-training.samples_1[,i], ]
+        # Build and save the models
+        model_1 <- glm(RT_binomial ~ 0 + stop_type + down_123nt + hydrophobicity + up_123nt + stop_type:down_123nt, train.data_1, family="binomial")
+        # Make predictions and compute the R2
+        predictions_1 <- predict(model_1, test.data_1, type = "response")
+        R2_1 = c(R2_1, cor(predictions_1, test.data_1$RT_binomial)^2)
+        tmp_predictions<-data.frame(predicted=predictions_1*100, observed=test.data_1$RT_binomial*100, treatment=drugs[j])
+        all_predictions<-rbind(all_predictions, tmp_predictions)
+      }
+      llista[[j]]<-all_predictions
+      natstops_drug_specific_r2s[j]<-mean(R2_1)
+      print(j)
+    }
+    mean(R2_1, na.rm=T)
+    natstops_drug_specific_r2s<-data.frame(treatment=drugs, r2=natstops_drug_specific_r2s)
+    
+    all_drugs_predictions_natstops<-data.frame()
+    for (j in 1:length(drugs)){all_drugs_predictions_natstops<-rbind(all_drugs_predictions_natstops, llista[[j]])}
+    all_drugs_predictions_natstops<-as.data.table(all_drugs_predictions_natstops)
+```
+
+**Fig.6c:** Observed vs predicted plot using either the PTC-trained or NTC-trained models on the NTC dataset (in the case of the NTC-trained models, it's crossvalidation -> plotting together the held out data predictions from all 10 models):
+```    
+    p1<-ggplot(all_drugs_predictions_natstops) + geom_hex(aes(y=observed, x=predicted), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+      stat_cor(aes(y=observed, x=predicted, label = ..rr.label..), size=4, label.y.npc=c(1,1)) + p + 
+      theme(plot.title = element_textbox_simple(color ="black", fill = "grey", size = 15, halign = 0.5), legend.position = "none", text = element_text(size = 15), axis.title.x = element_blank(), axis.title.y = element_blank()) +
+      facet_wrap(~treatment, nrow=1, scales = "free") + ggtitle("NTC models")
+    
+    p2<-ggplot(NTCs[reads_allbins>10]) + geom_hex(aes(y=RT, x=predictions_disease_models), bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) +
+      stat_cor(aes(y=RT, x=predictions_disease_models, label = ..rr.label..), size=4, label.y.npc=c(1,1)) + p + 
+      theme(plot.title = element_textbox_simple(color ="black", fill = "grey", size = 15, halign = 0.5), legend.position = "none", text = element_text(size = 15), axis.title.x = element_blank(), axis.title.y = element_blank()) +
+            facet_wrap(~treatment, nrow=1, scales = "free") + ggtitle("PTC models")
+    
+    p3<-ggarrange(p1,p2, nrow=2)
+    annotate_figure(p3, left = textGrob("Observed", rot = 90, gp = gpar(fontsize = 15)), bottom = textGrob("Predicted", vjust = .1,  gp = gpar(fontsize = 15))) 
+```
+    
+**Generate the NTCs_PTCs datatable:** where we join all variants from natural_stops and disease_PTCs into one datable.
+
+**The scripts for the generation of the NTCs_PTCs datatable can be skipped by directly loading it from your base dir:**
+ 
+``` 
+  NTCs_PTCs<-readRDS(file = file.path(base_dir, "NTCs_PTCs.rds"))
+```
+
+**If the user wants to generate it step by step, then:**
+``` 
+  treated_samples<-readRDS(file = file.path(base_dir, "treated_samples.rds"))
+
+  NTCs[, up_aa:= seqinr::translate(s2c(up_123nt)), by=1:nrow(NTCs)]
+  setnames(NTCs, c("variant", "hgnc_symbol", "ensembl_transcript_id"), c("nt_seq", "GENEINFO", "Transcript_ID"))
+  NTCs[, stop_class:="NTCs"]; treated_samples[, stop_class:="PTCs"]
+
+  cnames<-c(intersect(names(NTCs), names(treated_samples)))
+  treated_samples[, c("stop_downstream", "dist_to_downstreamstop"):=.("no", 1000)]
+  NTCs_PTCs<-rbind(NTCs[, .SD, .SDcols=cnames], treated_samples[!treatment%in%c("FUr", "Gentamicin", "Untreated", "CC90009"), .SD, .SDcols=cnames])
+  NTCs_PTCs$stop_class<-factor(NTCs_PTCs$stop_class, levels=c("PTCs", "NTCs"))
+```
+
+**Fig.6a,b:** Readthrough distributions PTCs vs NTCs:
+```
+  p0<-p+theme(axis.text.y = element_text(vjust = 0.5, hjust = 0.5, angle = 0, size=15),
+              axis.text.x = element_text(vjust = 0.5, hjust = 0.5, angle = 0, size=15),
+              axis.title.y = element_blank(),
+              axis.title.x = element_text(size=15),
+              legend.text = element_text(size=15),
+              legend.title = element_blank(),
+              legend.position = c(.5,1),  legend.direction="horizontal")
+  
+  p1<-ggplot(NTCs_PTCs[!is.na(RT)],aes(x = RT, y = treatment)) +
+    geom_density_ridges(aes(fill=stop_class)) + library_fills +
+    scale_y_discrete(expand = c(0, 0), limits=rev(c("G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+    scale_x_continuous(limits = c(-0.25, 5), breaks=seq(1,7.5,1)) + 
+    annotate(geom = "text", x = 2.5, y = 6.25, label = "Threshold=0" , size = 5) +
+    ylab("Density")+ xlab("Readthrough (%)")+ p0 + theme(legend.position = "none") + labs(title="")
+  
+  p1b<-ggplot(NTCs_PTCs[!is.na(RT)],aes(x = RT, y = treatment)) +
+    geom_density_ridges(aes(fill=stop_class)) + library_fills +
+    scale_y_discrete(expand = c(0, 0), limits=rev(c("G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+    scale_x_continuous(limits = c(-0.25, 5), breaks=seq(1,7.5,1)) + 
+    annotate(geom = "text", x = 2.5, y = 6.25, label = "Threshold=0" , size = 5) +
+    ylab("Density")+ xlab("Readthrough (%)")+ p0 + theme(legend.position = "none", axis.text.y=element_blank()) + labs(title="")
+  
+  NTCs_PTCs[, RT_stopdown_aware:=if_else(dist_to_downstreamstop<6, 0, RT)]
+  p2<-ggplot(NTCs_PTCs[!is.na(RT_stopdown_aware)],aes(x = RT_stopdown_aware, y = treatment)) +
+    geom_density_ridges(aes(fill=stop_class)) + library_fills +
+    scale_y_discrete(expand = c(0, 0), limits=rev(c("G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+    scale_x_continuous(limits = c(-0.25, 5), breaks=seq(1,7.5,1)) + 
+    annotate(geom = "text", x = 2.5, y = 6.25, label = "Threshold=5" , size = 5) +
+    ylab("Density")+ xlab("Readthrough (%)")+ p0 + theme(axis.text.y=element_blank()) + labs(title="")
+ 
+  NTCs_PTCs[, RT_stopdown_aware:=if_else(dist_to_downstreamstop<11, 0, RT)] 
+  p3<-ggplot(NTCs_PTCs[!is.na(RT_stopdown_aware)],aes(x = RT_stopdown_aware, y = treatment)) +
+    geom_density_ridges(aes(fill=stop_class)) + library_fills +
+    scale_y_discrete(expand = c(0, 0), limits=rev(c("G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+    scale_x_continuous(limits = c(-0.25, 5), breaks=seq(1,7.5,1)) +
+    annotate(geom = "text", x = 2.5, y = 6.25, label = "Threshold=10" , size = 5) +
+    ylab("Density") + xlab("Readthrough (%)")+ p0 + theme(legend.position = "none", axis.text.y=element_blank()) + labs(title="")
+  
+  NTCs_PTCs[, RT_stopdown_aware:=if_else(dist_to_downstreamstop<26, 0, RT)] 
+  p4<-ggplot(NTCs_PTCs[!is.na(RT_stopdown_aware)],aes(x = RT_stopdown_aware, y = treatment)) +
+    geom_density_ridges(aes(fill=stop_class)) + library_fills +
+    scale_y_discrete(expand = c(0, 0), limits=rev(c("G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+    scale_x_continuous(limits = c(-0.25, 5), breaks=seq(1,7.5,1)) +
+    annotate(geom = "text", x = 2.5, y = 6.25, label = "Threshold=25" , size = 5) +
+    ylab("Density") + xlab("Readthrough (%)") + p0 + theme(legend.position = "none", axis.text.y=element_blank()) + labs(title="")
+  
+    ggarrange(p1, p1b, p2, p3, p4, ncol=5)
+    
+    ggplot(NTCs_PTCs[replicate==1 & reads_allbins>10], aes(y=RT, x=treatment, fill=stop_class)) +    ylim(0,5) + geom_boxplot(outlier.shape = NA) + 
+        labs(x="", y="Readthrough (%)", title="") + p + library_fills +
+        theme(legend.text = element_text(size=15), legend.title = element_blank(), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+```    
+  
+**Fig.6d:** NTCvsPTC vs sequence features boxplots
+```  
+    tmp1<-NTCs_PTCs[, mean(RT, na.rm=T), by=c("stop_type", "stop_class", "treatment")]; setnames(tmp1, "stop_type", "feature"); tmp1[, factor:="stop_type"]
+    tmp2<-NTCs_PTCs[stop_type=="uga", mean(RT, na.rm=T), by=c("down_123nt", "stop_class", "treatment")]; setnames(tmp2, "down_123nt", "feature"); tmp2[, factor:="down_123nt"]
+    tmp3<-NTCs_PTCs[stop_type=="uga", mean(RT, na.rm=T), by=c("up_123nt", "stop_class", "treatment")]; setnames(tmp3, "up_123nt", "feature"); tmp3[, factor:="up_123nt"]
+    
+    tmp4<-as.data.table(spread(rbind(tmp1, tmp2, tmp3), stop_class, V1))
+    p1<-ggplot(tmp4, aes(x=PTCs, y=NTCs, group=factor, color=factor)) + scale_color_manual(values=c("#34A43B", "#8F8F90", "#66B2FF")) + geom_point() + 
+      geom_smooth(method = "lm", se = FALSE, color="black") + stat_cor( aes(x=PTCs, y=NTCs, group=factor, label = ..r.label..), size=4) + p + theme(text=element_text(size=15), legend.position="right") + 
+      facet_wrap(~treatment, nrow=2) + labs(color="Sequence features")
+```  
+  

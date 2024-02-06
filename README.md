@@ -42,8 +42,8 @@ R Markdown files are meant to be run in the following order:
 * **3. Fig2_extdataFig2.Rmd**
 * **4. Fig3_extdataFig3.Rmd**
 * **5. Fig4_extdataFig4.Rmd**
-* **6. Fig5.Rmd**
-* **7. Fig6_extdatafig5.Rmd**
+* **6. Fig5_extdatafig5.Rmd**
+* **7. Fig6.Rmd**
 
 # Additional scripts and software
 

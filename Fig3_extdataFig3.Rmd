@@ -194,55 +194,55 @@ Plot the UpSet plot:
 **Fig.3d:** Readthrough efficiencies for all TP53 mutations measured in our dataset. Each drug-specific plot is stored in p1,p2,...,p9.
 
 ```
-p1<-ggplot(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+p1<-ggplot(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Clitocine") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(1, 3, 1))  +
             geom_point(data=treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], nudge_y = 0.25, aes(label=mutation_identifier_short), color="black")
           
-          p2<-ggplot(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+          p2<-ggplot(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="SRI") + p + theme(axis.text.x = element_blank()) +
             geom_point(data=treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], nudge_y = 1, aes(label= mutation_identifier_short), color="black")
           
-          p3<-ggplot(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+          p3<-ggplot(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="G418") + p + theme(axis.text.x = element_blank()) +
             geom_point(data=treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], position=position_jitter(height =.75), aes(label= mutation_identifier_short), color="black")
           
-          p4<-ggplot(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+          p4<-ggplot(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="DAP") + p + theme(axis.text.x = element_blank()) + 
             geom_point(data=treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], nudge_y = 0.5, aes(label=mutation_identifier_short), color="black")
           
-          p5<-ggplot(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+          p5<-ggplot(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="SJ6986") + p + theme(axis.text.x = element_blank()) + 
             geom_point(data=treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], nudge_y = 0.5, aes(label=mutation_identifier_short), color="black")
           
-          p6<-ggplot(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+          p6<-ggplot(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="CC90009") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(1,2, 1))  + 
             geom_point(data=treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")],  position=position_jitter(height =.3), aes(label=mutation_identifier_short), color="black")
           
-          p7<-ggplot(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+          p7<-ggplot(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="FUr") + p + theme(axis.text.x = element_blank())  + 
             geom_point(data=treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X")], nudge_y = 0.25, aes(label=mutation_identifier_short), color="black")
           
-          p8<-ggplot(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+          p8<-ggplot(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Gentamicin") + p + theme(axis.text.x = element_blank())  + 
             geom_point(data=treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X")],  nudge_y = 0.15, aes(label=mutation_identifier_short), color="black")
           
-          p9<-ggplot(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="TP53"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+          p9<-ggplot(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="TP53" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="TP53"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Untreated") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(0.1, 1, 0.2))  + 
             geom_point(data=treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="TP53" &  mutation_identifier_short%chin%c("R213X", "R342X", "R306X", "R196X", "Q192X")], size=4, fill="black") +
@@ -287,12 +287,12 @@ Plot:
 
 
 ```
-p3<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="LAMB3"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
+p3<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>10 & GENEINFO=="LAMB3"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
         geom_jitter(data = treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="LAMB3"], aes(group=clinical_trial, color=clinical_trial), size=1, alpha=0.9, width = .25) +
         labs(x="Stop type", y="Readthrough (%)", title="Clinical trial: NCT04140786\nDrug: Gentamicin, Gene: LAMB3") + p_var2 + guides(colour = guide_legend(override.aes = list(size=2.5)))+
         theme(plot.margin = unit(c(.5, 2, .5, .5), "lines"), axis.text.x=element_text(angle=90, hjust = 1)) + scale_color_manual(values = c("#5ab4ac", "#8E679F"), name = "Included in Clinical Trial", labels = c("Yes", "No"))
       
-      p4<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="CFTR"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
+      p4<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>10 & GENEINFO=="CFTR"], aes(y=RT, x=treatment)) + geom_boxplot(fill="#FFCCCC", alpha=.5, outlier.shape = NA) + 
         geom_jitter(data = treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="CFTR" & CFTR_G542X=="no"], size=1, alpha=0.9, width = .25, color="#8E679F") +
         geom_jitter(data = treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins>20 & GENEINFO=="CFTR" & CFTR_G542X=="yes"], size=1, alpha=0.9, width = .25, color="#5ab4ac") +
         labs(x="Stop type", y="Readthrough (%)", title="Clinical trial: NCT04135495\nDrug: ELX-02, Gene: CFTR") + p_var2 + guides(colour = guide_legend(override.aes = list(size=2.5))) +
@@ -311,7 +311,7 @@ p3<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins
  ## Out of all stops of the APC, CFTR and DMD, calculate which are the stops performing best for each drug and store the data in 'APC_variants', 'CFTR_variants' and 'DMD_variants' dtbls.
 ```
 #### APC:
-    tmp_1<-treated_samples[GENEINFO=="APC" & replicate==1]
+    tmp_1<-treated_samples[GENEINFO=="APC" & replicate==1 & reads_allbins>=10]
     APC_variants <- tmp_1[order(tmp_1$RT, decreasing = TRUE), ]  # Top N highest values by group
     APC_variants <- data.table(APC_variants, key = "nt_seq")
     APC_variants <- APC_variants[ , head(.SD, 1), by = nt_seq]
@@ -324,7 +324,7 @@ p3<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins
     
     
 #### CFTR:  
-    tmp_2<-treated_samples[GENEINFO=="CFTR" & replicate==1]
+    tmp_2<-treated_samples[GENEINFO=="CFTR" & replicate==1 & reads_allbins>=10]
     CFTR_variants <- tmp_2[order(tmp_2$RT, decreasing = TRUE), ]  # Top N highest values by group
     CFTR_variants <- data.table(CFTR_variants, key = "nt_seq")
     CFTR_variants <- CFTR_variants[ , head(.SD, 1), by = nt_seq]
@@ -337,7 +337,7 @@ p3<-ggplot(treated_samples[treatment!="Untreated" & replicate==1 & reads_allbins
 
     
 #### DMD:
-    tmp_3<-treated_samples[GENEINFO=="DMD" & replicate==1, c("nt_seq", "RT", "treatment")]
+    tmp_3<-treated_samples[GENEINFO=="DMD" & replicate==1 & reads_allbins>=10, c("nt_seq", "RT", "treatment")]
     DMD_variants <- tmp_3[order(tmp_3$RT, decreasing = TRUE)]  # Top N highest values by group
     DMD_variants <- data.table(DMD_variants, key = "nt_seq")
     DMD_variants <- DMD_variants[ , head(.SD, 1), by = nt_seq]
@@ -391,21 +391,21 @@ p_var1<-theme(text = element_text(size = 14), axis.line.x = element_blank(), axi
 
 **Ext.Data.Fig.3a:**
 ```
-  ggplot(treated_samples) + geom_hex(aes(x=RT, y=tAI_up_5aas), bins=70) + geom_smooth(aes(x=RT, y=tAI_up_5aas), method='lm') + stat_cor(aes(x=RT, y=tAI_up_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="tAI 5 codons upstream", x="Readthrough (%)") +
+  ggplot(treated_samples[reads_allbins>=10]) + geom_hex(aes(x=RT, y=tAI_up_5aas), bins=70) + geom_smooth(aes(x=RT, y=tAI_up_5aas), method='lm') + stat_cor(aes(x=RT, y=tAI_up_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="tAI 5 codons upstream", x="Readthrough (%)") +
             scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + p
 ```
 
 **Ext.Data.Fig.3b:**
 
 ```
-        ggplot(treated_samples) + geom_hex(aes(x=RT, y=CAI_up_5aas), bins=70) + geom_smooth(aes(x=RT, y=CAI_up_5aas), method='lm') + stat_cor(aes(x=RT, y=CAI_up_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="CAI 5 codons upstream", x="Readthrough (%)") +
+        ggplot(treated_samples[reads_allbins>=10]) + geom_hex(aes(x=RT, y=CAI_up_5aas), bins=70) + geom_smooth(aes(x=RT, y=CAI_up_5aas), method='lm') + stat_cor(aes(x=RT, y=CAI_up_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="CAI 5 codons upstream", x="Readthrough (%)") +
             scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + p
 ```
 
 **Ext.Data.Fig.3c:**
 
 ```               
-        ggplot(treated_samples) + geom_point(aes(x=RT, y=GCperc_5aas), alpha=.5, color="#FFCCCC") + geom_smooth(aes(x=RT, y=GCperc_5aas), method='lm') + stat_cor(aes(x=RT, y=GCperc_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="GC% 5 codons upstream", x="Readthrough (%)") +
+        ggplot(treated_samples[reads_allbins>=10]) + geom_point(aes(x=RT, y=GCperc_5aas), alpha=.5, color="#FFCCCC") + geom_smooth(aes(x=RT, y=GCperc_5aas), method='lm') + stat_cor(aes(x=RT, y=GCperc_5aas, label = ..r.label..), size=4, label.y.npc=c(1,1)) + facet_wrap(~treatment, nrow=3, scales = "free") + labs(y="GC% 5 codons upstream", x="Readthrough (%)") +
             scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + p
 ```
 
@@ -484,7 +484,7 @@ Create the plots for each drug and stop type pairwise combination separately (p1
   What we want to answer here is whether the percentage of PTCs whose readthrough is maximized by each of the drugs changes across genes? Generate the 'topdrugs_pergene' datatable:
   For each mutation in our dataset, calculate which is the treatment maximises readthrough:
 ```
-      topdrugs_pergene<-treated_samples[!is.na(RT) & replicate==1, max(RT), by=c("mutation_identifier", "stop_type")]
+      topdrugs_pergene<-treated_samples[!is.na(RT) & replicate==1 & reads_allbins>=10, max(RT), by=c("mutation_identifier", "stop_type")]
       for (i in 1:nrow(topdrugs_pergene)){
         topdrugs_pergene$treatment[i]<-treated_samples[replicate==1 & mutation_identifier==topdrugs_pergene$mutation_identifier[i] & stop_type==topdrugs_pergene$stop_type[i] & RT==topdrugs_pergene$V1[i], as.character(treatment)]
         topdrugs_pergene$stop_type[i]<-treated_samples[replicate==1 & mutation_identifier==topdrugs_pergene$mutation_identifier[i] & stop_type==topdrugs_pergene$stop_type[i] & RT==topdrugs_pergene$V1[i], as.character(stop_type)]
@@ -519,55 +519,55 @@ ggplot(topdrugs_pergene[treatment!="Gentamicin" & !(GENEINFO=="RAD50" & treatmen
 **Ext.Data.Fig.3f:** readthrough efficiencies for all PTEN mutations measured in our dataset. Each drug-specific plot is stored in p1,p2,...,p9.
 
 ```
-    p1<-ggplot(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p1<-ggplot(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Clitocine") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(1, 2, 1))  + 
             geom_point(data=treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="Clitocine" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], nudge_y = 0.25, aes(label=mutation_identifier_short), color="black")
             
-    p2<-ggplot(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p2<-ggplot(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="SRI") + p + theme(axis.text.x = element_blank()) +
             geom_point(data=treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="SRI" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], nudge_y = 0.75, aes(label= mutation_identifier_short), color="black")
           
-    p3<-ggplot(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p3<-ggplot(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="G418") + p + theme(axis.text.x = element_blank()) +
             geom_point(data=treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="G418" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], position=position_jitter(height =.25), aes(label= mutation_identifier_short), color="black")
 
-    p4<-ggplot(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p4<-ggplot(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="DAP") + p + theme(axis.text.x = element_blank()) + 
             geom_point(data=treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="DAP" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], nudge_y = 0.5, aes(label=mutation_identifier_short), color="black")
           
-    p5<-ggplot(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p5<-ggplot(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="SJ6986") + p + theme(axis.text.x = element_blank()) + 
             geom_point(data=treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="SJ6986" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], nudge_y = 0.5, aes(label=mutation_identifier_short), color="black")
           
-    p6<-ggplot(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
+    p6<-ggplot(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() +
             scale_x_discrete(limits = sort(treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="CC90009") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(1,2,1))  + 
             geom_point(data=treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="CC90009" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")],  position=position_jitter(height =.2), aes(label=mutation_identifier_short), color="black")
           
-    p7<-ggplot(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+    p7<-ggplot(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="FUr") + p + theme(axis.text.x = element_blank())  + 
             geom_point(data=treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="FUr" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")],  position=position_jitter(height =.1), aes(label=mutation_identifier_short), color="black")
           
-    p8<-ggplot(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+    p8<-ggplot(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Gentamicin") + p + theme(axis.text.x = element_blank())  + 
             geom_point(data=treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +
             geom_text(data=treated_samples[treatment=="Gentamicin" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")],  position=position_jitter(height =.05), aes(label=mutation_identifier_short), color="black")
           
-    p9<-ggplot(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="PTEN"], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
+    p9<-ggplot(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="PTEN" & reads_allbins>=10], aes(x=aa_gene_position, y=RT, group=toupper(stop_type), color=toupper(stop_type)))+ geom_point() + 
             scale_x_discrete(limits = sort(treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="PTEN"]$aa_gene_position)) + stops_colors + 
             labs(y="Readthrough (%)", x="Transcript position (5'-3')", title="Untreated") + p + theme(axis.text.x = element_blank()) + scale_y_continuous(breaks=seq(0.1, 0.4, 0.1))  + 
             geom_point(data=treated_samples[treatment=="Untreated" & replicate==1 & GENEINFO=="PTEN" &  mutation_identifier_short%chin%c("R130X", "R233X", "Q171X", "Q245X")], size=4, fill="black") +

@@ -16,12 +16,12 @@ The data for both DMS and individual measurements of the validation variants is 
 ```
   all_validation_variants<-readRDS(file = file.path(base_dir, "./all_validation_variants.rds"))
 
-      ggplot(all_validation_variants[!sanger%chin%c("Col.88", "Col.78") & ceiling=="no"], aes(y = DMS, x = mean_RT_validation)) + geom_point(color='black', size=5) +
+      ggplot(all_validation_variants[!sanger%chin%c("Col.78") & ceiling=="no"], aes(y = DMS, x = mean_RT_validation)) + geom_point(color='black', size=5) +
         geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(aes(label = ..r.label..), method = "pearson", size=10) +  
         geom_point(data=all_validation_variants[sanger=="Col.78"], aes(y = DMS, x = mean_RT_validation), size=5) + xlab("Validation Readthrough (%)") + ylab("DMS Readthrough (%)") + p +            theme(text = element_text(size=25))
         
    
-      ggplot(all_validation_variants[!sanger%chin%c("Col.88")], aes(y = DMS, x = mean_RT_validation)) + geom_point(color='black', size=5) +
+      ggplot(all_validation_variants, aes(y = DMS, x = mean_RT_validation)) + geom_point(color='black', size=5) +
         geom_smooth(method = "loess", span=.9, se = FALSE, color="red") + stat_cor(aes(label = ..r.label..), method = "pearson", size=10) + 
         geom_hline(yintercept = 5.7, linetype = "dashed", color = "black", size=1) +
         geom_point(data=all_validation_variants[ceiling=="yes"], aes(y = DMS, x = mean_RT_validation), size=5, color="#C0C0C0") + xlab("Validation Readthrough (%)") + ylab("DMS Readthrough         (%)") + p + theme(text = element_text(size=25))
@@ -32,13 +32,13 @@ The data for both DMS and individual measurements of the validation variants is 
 ```  
 allcelllines_DVCs<-readRDS(file = file.path(base_dir, "allcelllines_DVCs.rds"))
 
-      p1<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1 & !sanger%chin%c("Col.88")], aes(y = RT_HEK, x = RT_HeLa, label=sanger)) + geom_point(size=5) + p +
+      p1<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1], aes(y = RT_HEK, x = RT_HeLa, label=sanger)) + geom_point(size=5) + p +
         geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(aes(label = ..r.label..), method = "pearson", size=8) + theme(text = element_text(size=20))
       
-      p2<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1 & !sanger%chin%c("Col.88")], aes(y = RT_HEK, x = RT_MCF7, label=sanger)) + geom_point(size=5) + p +
+      p2<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1], aes(y = RT_HEK, x = RT_MCF7, label=sanger)) + geom_point(size=5) + p +
         geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(aes(label = ..r.label..), method = "pearson", size=8) + theme(text = element_text(size=20))
       
-      p3<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1 & !sanger%chin%c("Col.88")], aes(y = RT_MCF7, x = RT_HeLa, label=sanger)) + geom_point(size=5) + p +
+      p3<-ggplot(allcelllines_DVCs[!is.na(RT_HeLa) & Replicate==1], aes(y = RT_MCF7, x = RT_HeLa, label=sanger)) + geom_point(size=5) + p +
         geom_smooth(method = "lm", se = FALSE, color="red") + stat_cor(aes(label = ..r.label..), method = "pearson", size=8) + theme(text = element_text(size=20))
       ggarrange(p1,p2,p3, ncol=1)
 ```      

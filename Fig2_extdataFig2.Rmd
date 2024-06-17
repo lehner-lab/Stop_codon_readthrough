@@ -12,7 +12,7 @@ output: html_document
 
 **Fig.2a:**Readthrough distribution across drugs.
 ```
-  ggplot(treated_samples[!is.na(RT)],aes(x = RT, y = treatment)) +
+  ggplot(treated_samples[!is.na(RT) & reads_allbins>=10],aes(x = RT, y = treatment)) +
     geom_density_ridges(aes(color=treatment, scale = 2, fill=treatment)) +
     # basal_RT==T layer: geom_density_ridges(data=treated_samples[basal_RT=="high" & replicate==1], alpha=0.1, fill="orange", aes(color=treatment, scale = 2, fill=treatment)) + 
     # geom_jitter(data = treated_samples[basal_RT=="high" & replicate==1], aes(y=treatment, x=RT), width = 0.0, height = 0.02) +
@@ -78,16 +78,16 @@ correlations_tbl<-readRDS(file = file.path(base_dir, "Fig2/correlations_tbl.rds"
 Generate the 'ax' datatables each contains data for one drug.
 
 ```
-  a1<-treated_samples[treatment=="Untreated" & replicate==1, c("identifier","RT", "stop_type", "down_12nt", "down_1nt")]; setnames(a1, "RT", "Untreated")
+  a1<-treated_samples[treatment=="Untreated" & replicate==1 & reads_allbins>=10, c("identifier","RT", "stop_type", "down_12nt", "down_1nt")]; setnames(a1, "RT", "Untreated")
   
-  a2<-treated_samples[treatment=="SRI" & replicate==1, c("identifier","RT")]; setnames(a2, "RT", "SRI")
-  a3<-treated_samples[treatment=="DAP" & replicate==1, c("identifier","RT")]; setnames(a3, "RT", "DAP")
-  a4<-treated_samples[treatment=="Clitocine" & replicate==1, c("identifier","RT")]; setnames(a4, "RT", "Clitocine")
-  a5<-treated_samples[treatment=="Gentamicin" & replicate==1, c("identifier","RT")]; setnames(a5, "RT", "Gentamicin")
-  a6<-treated_samples[treatment=="G418" & replicate==1, c("identifier","RT")]; setnames(a6, "RT", "G418")
-  a7<-treated_samples[treatment=="CC90009" & replicate==1, c("identifier","RT")]; setnames(a7, "RT", "CC90009")
-  a8<-treated_samples[treatment=="SJ6986" & replicate==1, c("identifier","RT")]; setnames(a8, "RT", "SJ6986")
-  a9<-treated_samples[treatment=="FUr" & replicate==1, c("identifier","RT")]; setnames(a9, "RT", "FUr")
+  a2<-treated_samples[treatment=="SRI" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a2, "RT", "SRI")
+  a3<-treated_samples[treatment=="DAP" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a3, "RT", "DAP")
+  a4<-treated_samples[treatment=="Clitocine" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a4, "RT", "Clitocine")
+  a5<-treated_samples[treatment=="Gentamicin" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a5, "RT", "Gentamicin")
+  a6<-treated_samples[treatment=="G418" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a6, "RT", "G418")
+  a7<-treated_samples[treatment=="CC90009" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a7, "RT", "CC90009")
+  a8<-treated_samples[treatment=="SJ6986" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a8, "RT", "SJ6986")
+  a9<-treated_samples[treatment=="FUr" & replicate==1 & reads_allbins>=10, c("identifier","RT")]; setnames(a9, "RT", "FUr")
 ```  
 Join them in 'all_drugs_RT_ascolumns' object, to plot Fig.2c scatterplots. 'all_drugs_RT_ascolumns' has the drug-specific RT as columns together with the stop type and downstream sequence context information.
 
@@ -154,7 +154,7 @@ Alternatively, directly load the 'heatmap_df.rds' object from base_dir:
   
 **Fig.2d:**Stop type
 ```
-ggplot(treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Stop type", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 
@@ -162,7 +162,7 @@ ggplot(treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & repli
 
 **Fig.2e**: +1 nt downstream of the TGA PTC.
 ```        
-          ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + 
+          ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="+1nt downstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
@@ -170,28 +170,28 @@ ggplot(treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & repli
 **Fig.2f:** Stop type and +1nt downstream interaction.
 
 ```
-ggplot(treated_samples[treatment%in%c("Clitocine", "SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + 
+ggplot(treated_samples[treatment%in%c("Clitocine", "SRI") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + 
             theme(legend.text = element_text(size=12), legend.title=element_blank(),legend.position = c(.5,1.15), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55)) +
             facet_wrap(~toupper(stop_type), scales = "free") + p
 ```
 
 **Fig.2g:**Trinucleotide downstream of the TGA PTC for SRI drug.
 ```
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="+123nt downstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
 
 **Fig.2h**: Trinucleotide upstream of the TGA PTC for SRI drug.
 ```
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="+123nt upstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
 
 **Fig.2i:**Glutamic acid upstream of the TGA PTC.
 ```
-ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Glutamic acid upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
@@ -199,7 +199,7 @@ ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("Clitocine
 **Fig.2j:**
 
 ```
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>20], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>=10], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
             nts_fills + labs(x="Aminoacid upstream of the TGA PTC", y="Readthrough (%)", fill="3rd nt") + p + facet_wrap(~treatment, nrow=2, scales = "free") +
             theme(panel.spacing.y = unit(.5, "lines"), legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "top", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```            
@@ -210,7 +210,7 @@ ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DA
 **Ext.Data.Fig.2a:**
 
 ```  
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Three nucleotides downstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```          
@@ -218,20 +218,20 @@ ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DA
 **Ext.Data.Fig.2b:**
 
 ``` 
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Three nucleotides upstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```          
 
 **Ext.Data.Fig.2c:**
 ```
-ggplot(treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Stop type", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
 **Ext.Data.Fig.2d:**
 ```
-          ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + 
+          ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="+1nt downstream the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```    
@@ -239,7 +239,7 @@ ggplot(treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") 
 **Ext.Data.Fig.2e:**
 
 ```
-ggplot(treated_samples[treatment%in%c("G418", "SJ6986", "DAP") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + 
+ggplot(treated_samples[treatment%in%c("G418", "SJ6986", "DAP") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + 
             theme(legend.text = element_text(size=12), legend.title=element_blank(),legend.position = c(.5,1.15), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55)) +
             facet_wrap(~toupper(stop_type), scales = "free") + p
 ```
@@ -247,14 +247,14 @@ ggplot(treated_samples[treatment%in%c("G418", "SJ6986", "DAP") & replicate==1 & 
 **Ext.Data.Fig.2f:**
 
 ```
-ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_aa), fill=treatment)) + ylim(0,6) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Aminoacid upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+ggplot(treated_samples[stop_type=="tga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_aa), fill=treatment)) + ylim(0,6) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Aminoacid upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
     theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
 
 **Ext.Data.Fig.2g:**
 
 ```
-ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Glutamic acid upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
@@ -262,7 +262,7 @@ ggplot(treated_samples[stop_type=="tga" & up_aa=="E" & treatment%in%c("SJ6986", 
 **Ext.Data.Fig.2h:**
 
 ```
-ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Arginine upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
@@ -270,7 +270,7 @@ ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("Clitocine
 **Ext.Data.Fig.2i:**
 
 ```
-ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>=10], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
             drugs_fills + labs(x="Arginine upstream of the TGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
             theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```
@@ -278,7 +278,7 @@ ggplot(treated_samples[stop_type=="tga" & up_aa=="R" & treatment%in%c("SJ6986", 
 **Ext.Data.Fig.2j:**
 
 ```
- ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SJ6986", "CC90009") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>20], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
+ ggplot(treated_samples[stop_type=="tga" & treatment%in%c("SJ6986", "CC90009") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>=10], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
             nts_fills + labs(x="Aminoacid upstream of the TGA PTC", y="Readthrough (%)", fill="3rd nt") + p + facet_wrap(~treatment, nrow=2, scales = "free") +
             theme(panel.spacing.y = unit(.5, "lines"), legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "top", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
 ```

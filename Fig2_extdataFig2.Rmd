@@ -1,0 +1,582 @@
+---
+title: "Fig2_extdataFig2"
+output: html_document
+---
+
+
+**Load the 'treated_samples.rds' object (see the 'Generate_treated_samples.Rmd' file to generate the treated_samples dtbl):**
+
+```{r, warning = FALSE}  
+  treated_samples<-readRDS(file = file.path(base_dir, "treated_samples.rds"))
+```
+
+**Fig.2a:**Readthrough distribution across drugs.
+```{r, warning = FALSE} 
+  ggplot(treated_samples[!is.na(RT)], aes(x = RT, y = treatment)) +
+        geom_density_ridges(aes(color=treatment, scale = 2, fill=treatment)) + drugs_colors + drugs_fills +
+        scale_y_discrete(expand = c(0, 0), limits=rev(c("Untreated", "Gentamicin", "FUr", "CC90009", "G418", "DAP", "SRI", "SJ6986", "Clitocine")))+
+        annotate(geom = "text", x = .8, y = c(1.6,2.6,3.6,4.6,5.6,6.6,7.6,8.6,9.6), label = rev(c("n=5606", "n=5563", "n=5684", "n=5483", "n=5624", "n=5532", "n=5481", "n=5597", "n=5705")), size = 5) +
+        ylab("Density") + xlab("Readthrough (%)") + labs(title="") +
+        p + theme(axis.text.y = element_text(vjust = 0.5, hjust = 0.5, angle = 0, size=20),
+              axis.text.x = element_text(vjust = 0.5, hjust = 0.5, angle = 0, size=20),
+              axis.title.y = element_blank(),
+              axis.title.x = element_text(size=25),
+              legend.title = element_blank(),
+              legend.position = "none")
+```
+
+
+     
+ 
+**Fig.2b**: Interdrugs correlations. Load the correlations_tbl, cluster and plot the heatmap:
+```{r, warning = FALSE} 
+  correlations_tbl<-readRDS(file = file.path(base_dir, "./correlations_tbl.rds"))
+```
+Cluster the correlations_tbl to make the heatmap more readable:
+
+  'r' is a rearrangement of correlations_tbl, to do the clustering. 
+``` {r, warning = FALSE}  
+  r<-tidyr::pivot_wider(correlations_tbl, names_from = "treatment_2", values_from = "correlation")
+  r <- as.matrix(r[, -1]) # remove the treatment_1 column to do the clustering (we don't want it, it would mess things up)
+  clust_rows_heatmap2 <- hclust(dist(t(r)))
+```
+  Do the clustering for the columns 
+  
+```{r, warning = FALSE} 
+  c<-tidyr::pivot_wider(correlations_tbl, names_from = "treatment_2", values_from = "correlation")
+  c <- as.matrix(c[, -1]) # remove the variant column to do the clustering (we don't want it, it would mess things up)
+  clust_cols_heatmap2 <- hclust(dist(t(c)))
+```
+
+  Plot:
+```{r, warning = FALSE} 
+ ggplot(correlations_tbl, aes(x=treatment_1 ,y=treatment_2)) + geom_tile(aes(fill=correlation))+scale_fill_gradient2(low="red",mid="white",high="blue",midpoint=0, limits = c(0, 1), oob = scales::squish) + 
+          labs(fill="Pearson\ncorrelation") + scale_y_discrete(limits = colnames(r)[clust_rows_heatmap2$order]) + scale_x_discrete(limits=colnames(c)[clust_cols_heatmap2$order]) +
+          p + theme(text = element_text(size = 15), axis.text.x = element_text(size=15, angle=90), axis.text.y = element_text(size=15), axis.title.x = element_blank(), axis.title.y = element_blank())
+    
+```
+  
+**Fig.2b:** scatter plots.
+Generate the 'ax' datatables each contains data for one drug.
+
+```{r, warning = FALSE} 
+  a1<-treated_samples[treatment=="Untreated" & replicate==1, c("identifier","RT", "stop_type", "down_12nt", "down_1nt")]; setnames(a1, "RT", "Untreated")
+  
+  a2<-treated_samples[treatment=="SRI" & replicate==1, c("identifier","RT")]; setnames(a2, "RT", "SRI")
+  a3<-treated_samples[treatment=="DAP" & replicate==1, c("identifier","RT")]; setnames(a3, "RT", "DAP")
+  a4<-treated_samples[treatment=="Clitocine" & replicate==1, c("identifier","RT")]; setnames(a4, "RT", "Clitocine")
+  a5<-treated_samples[treatment=="Gentamicin" & replicate==1, c("identifier","RT")]; setnames(a5, "RT", "Gentamicin")
+  a6<-treated_samples[treatment=="G418" & replicate==1, c("identifier","RT")]; setnames(a6, "RT", "G418")
+  a7<-treated_samples[treatment=="CC90009" & replicate==1, c("identifier","RT")]; setnames(a7, "RT", "CC90009")
+  a8<-treated_samples[treatment=="SJ6986" & replicate==1, c("identifier","RT")]; setnames(a8, "RT", "SJ6986")
+  a9<-treated_samples[treatment=="FUr" & replicate==1, c("identifier","RT")]; setnames(a9, "RT", "FUr")
+```  
+Join them in 'all_drugs_RT_ascolumns' object, which has the drug-specific readthrough as columns together with the stop type and downstream sequence context information.
+
+```{r, warning = FALSE} 
+  all_drugs_RT_ascolumns<-left_join(left_join(left_join(left_join(left_join(left_join(left_join(left_join(a1, a2, by="identifier"), a3,by="identifier"), a4, by="identifier"), a5,by="identifier"), a6, by="identifier"), a7,by="identifier"),a8,by="identifier"),a9,by="identifier")
+```
+
+Alternatively, directly load the 'all_drugs_RT_ascolumns.rds' object from base_dir:
+
+```{r, warning = FALSE} 
+all_drugs_RT_ascolumns<-readRDS(file = file.path(base_dir, "all_drugs_RT_ascolumns.rds"))
+
+```
+
+SJ6986 vs SRI scatterplot:
+
+```{r, warning = FALSE} 
+        ggplot(all_drugs_RT_ascolumns) + geom_hex(aes(y=SRI, x=SJ6986, fill=toupper(stop_type)), bins=70) + stops_fills + labs(y="SRI", x="SJ6986") + stat_cor(aes(y=SRI, x=SJ6986, label = ..r.label..), size=10, label.y.npc=c(1,1)) +
+          p + theme(panel.spacing.y = unit(.5, "lines"), legend.position = "right", text = element_text(size = 25)) 
+```        
+Clitocine vs SRI scatterplot:
+
+```{r, warning = FALSE} 
+        ggplot(all_drugs_RT_ascolumns) + geom_hex(aes(y=SRI, x=Clitocine, fill=toupper(stop_type)), bins=70) + stops_fills + labs(y="Clitocine", x="SRI") + stat_cor(aes(y=SRI, x=Clitocine, label = ..r.label..), size=10, label.y.npc=c(1,1)) +
+          p + theme(panel.spacing.y = unit(.5, "lines"), legend.position = "right", text = element_text(size = 25)) 
+```
+
+**Fig.2c:** Readthrough heatmap.
+
+Generate heatmap_df, which is a reduction of the treated_samples: a) select only the treatment, identifier and RT columns. b) only one replicate and c) remove all the variants with at least one NA value in any of the treatments (n=300). The clustering doesn't know how to deal with NAs. Also, if one treatment has NA value, it means that these variants was in very low frequency in the library and probably has v low coverage & high error.
+
+```{r, warning = FALSE} 
+    heatmap_df<-treated_samples[replicate==1, c("treatment", "identifier", "RT")]
+    identifiers_to_remove<-unique(heatmap_df[is.na(RT), identifier])
+    heatmap_df<-heatmap_df[!identifier%chin%identifiers_to_remove]
+```
+  'r' is a rearrangement of heatmap_df, to do the clustering. Basically each variant becomes a column (ncols~5500), and the treatments are the rows. Then, I do the clustering on columns and store it on the 'clust' object. In the ggplot I'm gonna use the clust object to sort the y axis.
+    
+```{r, warning = FALSE} 
+    r<-tidyr::pivot_wider(heatmap_df, names_from = "identifier", values_from = "RT")
+    r <- as.matrix(r[, -1]) # remove the treatment column to do the clustering (we don't want it, it would mess things up)
+    clust_rows_heatmap <- hclust(dist(t(r)))
+```
+  Do the clustering for the columns (We want the heatmap to have both axis clustered)
+```{r, warning = FALSE} 
+    c<-tidyr::pivot_wider(heatmap_df, names_from = "treatment", values_from = "RT")
+    c <- as.matrix(c[, -1]) # remove the variant column to do the clustering (we don't want it, it would mess things up)
+    clust_cols_heatmap <- hclust(dist(t(c)))
+```
+
+Alternatively, directly load the 'heatmap_df.rds' object from base_dir:
+
+```{r, warning = FALSE} 
+  heatmap_df<-readRDS(file = file.path(base_dir, "heatmap_df.rds"))
+
+```
+
+  Plot:
+```{r, warning = FALSE} 
+    ggplot(heatmap_df, aes(x=treatment,y=as.character(identifier))) + geom_tile(aes(fill=RT))+scale_fill_gradient2(low="red",mid="white",high="blue",midpoint=0, limits = c(0, 7), oob = scales::squish) + 
+      scale_y_discrete(limits = colnames(r)[clust_rows_heatmap$order]) + scale_x_discrete(limits=colnames(c)[clust_cols_heatmap$order]) + labs(x="Treatment", y="Variants", fill="RT(%)") + p +theme(axis.text.y = element_blank(), axis.text.x = element_text(size=12.5))
+```
+  
+  
+**Fig.2d:**Stop type
+```{r, warning = FALSE} 
+ggplot(treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stop type", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ stop_type, data = treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & reads_allbins>10 & replicate==1])
+
+```
+
+**Fig.2e**: +1 nt downstream of the TGA PTC.
+```{r, warning = FALSE}         
+          ggplot(treated_samples[stop_type=="uga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="+1nt downstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ down_1nt, data = treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & reads_allbins>10 & replicate==1])
+```
+**Fig.2f:**Trinucleotide downstream of the TGA PTC for SRI drug.
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="+123nt downstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ down_123nt, data = treated_samples[treatment=="SRI" & reads_allbins>10 & replicate==1])
+```
+
+**Fig.2g:** Stop type and +1nt downstream interaction.
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[treatment%in%c("Clitocine", "SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + 
+            theme(legend.text = element_text(size=12), legend.title=element_blank(),legend.position = c(.5,1.15), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55)) +
+            facet_wrap(~toupper(stop_type), scales = "free") + p
+   
+# Wilcoxon tests for Clitocine:
+  # U>G for UAA
+  a<-wilcox.test(treated_samples[treatment=="Clitocine" & stop_type=="uaa" & down_1nt=="u" & replicate==1, RT], treated_samples[treatment=="Clitocine" & stop_type=="uaa" & down_1nt=="g" & replicate==1, RT], alternative = "greater")$p.value
+  #U=G for UGA       
+  b<-wilcox.test(treated_samples[treatment=="Clitocine" & stop_type=="uga" & down_1nt=="g" & replicate==1, RT], treated_samples[treatment=="Clitocine" & stop_type=="uga" & down_1nt=="u" & replicate==1, RT], alternative = "greater")$p.value
+  # Multiple comparision adjustment:      
+  p.adjust(c(a,b), method = "fdr")
+
+```
+
+**Fig.2h**: Trinucleotide upstream of the TGA PTC for SRI drug.
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("SRI") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="+123nt upstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ up_123nt, data = treated_samples[treatment=="SRI" & reads_allbins>10 & replicate==1])
+```
+
+**Fig.2i:**Glutamic acid upstream of the TGA PTC.
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & up_aa=="E" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+            drugs_fills + labs(x="Glutamic acid upstream of the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Wilcoxon tests for GAA>GAG
+    # SRI:
+  a<-wilcox.test(treated_samples[treatment=="SRI" & replicate==1 & stop_type=="uga" & up_123nt=="gaa", RT], 
+                 treated_samples[treatment=="SRI" & replicate==1 & up_123nt=="gag" & stop_type=="uga", RT], alternative = "greater")$p.value
+   # DAP      
+  b<-wilcox.test(treated_samples[treatment=="DAP" & replicate==1 & stop_type=="uga" & up_123nt=="gaa", RT], 
+                 treated_samples[treatment=="DAP" & replicate==1 & up_123nt=="gag" & stop_type=="uga", RT], alternative = "greater")$p.value
+   # Clitocine    
+  c<-wilcox.test(treated_samples[treatment=="Clitocine" & replicate==1 & stop_type=="uga" & up_123nt=="gaa", RT], 
+                 treated_samples[treatment=="Clitocine" & replicate==1 & up_123nt=="gag" & stop_type=="uga", RT], alternative = "greater")$p.value
+   # G418      
+  d<-wilcox.test(treated_samples[treatment=="G418" & replicate==1 & stop_type=="uga" & up_123nt=="gaa", RT], 
+                 treated_samples[treatment=="G418" & replicate==1 & up_123nt=="gag" & stop_type=="uga", RT], alternative = "greater")$p.value
+  # Multiple comparision adjustment:      
+  p.adjust(c(a,b,c,d), method = "fdr")
+```
+ 
+**Fig.2j:**
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>20], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
+            nts_fills + labs(x="Aminoacid upstream of the TGA PTC", y="Readthrough (%)", fill="3rd nt") + p + facet_wrap(~treatment, nrow=2, scales = "free") +
+            theme(panel.spacing.y = unit(.5, "lines"), legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "top", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Wilcoxon tests, each drug independently:
+    a<-wilcox.test(treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="DAP" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="DAP" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    b<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="G418" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="G418" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    c<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="SRI" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="SRI" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    d<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="CC90009" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="CC90009" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    e<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="Clitocine" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="Clitocine" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    f<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="SJ6986" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="SJ6986" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    g<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="Gentamicin" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="Gentamicin" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    h<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="FUr" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="FUr" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    # Multiple comparision adjustment:   
+    p.adjust(c(a,b,c,d,e,f,g,h), method = "fdr")
+```            
+            
+**Extended Data Fig.2:**
+
+**Ext.Data.Fig.2a:**
+
+```{r, warning = FALSE}  
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("Clitocine", "SJ6986", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + 
+            drugs_fills + labs(x="Three nucleotides downstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.8,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ down_123nt, data = treated_samples[treatment%in%c("Clitocine", "DAP", "G418", "SJ6986") & reads_allbins>10 & replicate==1])
+```          
+
+**Ext.Data.Fig.2b:**
+
+```{r, warning = FALSE}  
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("Clitocine", "SJ6986", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,6.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Three nucleotides upstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), axis.text.x=element_text(angle=90, size=10), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ up_123nt, data = treated_samples[treatment%in%c("Clitocine", "DAP", "G418", "SJ6986") & reads_allbins>10 & replicate==1])
+```          
+
+**Ext.Data.Fig.2c:**
+```{r, warning = FALSE} 
+ggplot(treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(stop_type), fill=treatment)) + ylim(0,4) + 
+  geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stop type", y="Readthrough (%)", title="", fill="Treatment") + p + theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ stop_type, data = treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & reads_allbins>10 & replicate==1])
+```
+**Ext.Data.Fig.2d:**
+```{r, warning = FALSE} 
+  ggplot(treated_samples[stop_type=="uga" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + 
+  ylim(0,5.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="+1nt downstream the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+  theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ down_1nt, data = treated_samples[treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & reads_allbins>10 & replicate==1])
+```    
+
+**Ext.Data.Fig.2e:**
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[treatment%in%c("G418", "SJ6986", "DAP") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(down_1nt), fill=treatment)) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Stoptype*down_1nt interaction", y="Readthrough (%)", title="") + theme(legend.text = element_text(size=12), legend.title=element_blank(),legend.position = c(.5,1.15), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55)) +facet_wrap(~toupper(stop_type), scales = "free") + p
+```
+
+**Ext.Data.Fig.2f:**
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & treatment%in%c("Clitocine", "SRI", "DAP", "G418") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_aa), fill=treatment)) + ylim(0,6) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Aminoacid upstream of the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+    theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = c(.5,.95), legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ up_aa, data = treated_samples[treatment%in%c("Clitocine", "SRI", "DAP", "G418") & reads_allbins>10 & replicate==1])
+```
+
+**Ext.Data.Fig.2g:**
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & up_aa=="E" & treatment%in%c("SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + 
+            drugs_fills + labs(x="Glutamic acid upstream of the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+            theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+```
+
+**Ext.Data.Fig.2h:**
+
+```{r, warning = FALSE} 
+ggplot(treated_samples[stop_type=="uga" & up_aa=="R" & treatment%in%c("Clitocine", "SRI", "DAP", "G418", "SJ6986", "CC90009", "FUr", "Gentamicin") & replicate==1 & reads_allbins>20], aes(y=RT, x=toupper(up_123nt), fill=treatment)) + ylim(0,4.5) + geom_boxplot(outlier.shape = NA) + drugs_fills + labs(x="Arginine upstream of the UGA PTC", y="Readthrough (%)", title="", fill="Treatment") + p + 
+theme(legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "none", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Kruskal-Wallis test:
+kruskal.test(RT ~ up_123nt, data = treated_samples[reads_allbins>10 & replicate==1 & up_aa=="R"])
+```
+
+**Ext.Data.Fig.2i:**
+
+```{r, warning = FALSE} 
+ ggplot(treated_samples[stop_type=="uga" & treatment%in%c("SJ6986", "CC90009", "Gentamicin", "FUr") & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A") & replicate==1 & reads_allbins>20], aes(y=RT, x=up_aa, fill=toupper(up_1nt))) + geom_boxplot(outlier.shape = NA) + 
+            nts_fills + labs(x="Aminoacid upstream of the UGA PTC", y="Readthrough (%)", fill="3rd nt") + p + facet_wrap(~treatment, nrow=2, scales = "free") +
+            theme(panel.spacing.y = unit(.5, "lines"), legend.text = element_text(size=12), legend.title = element_text(size=15), legend.position = "top", legend.direction="horizontal") + guides(fill = guide_legend(title.position = "top", title.hjust=.55))
+
+# Wilcoxon tests, each drug independently:
+    a<-wilcox.test(treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="DAP" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="DAP" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    b<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="G418" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="G418" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    c<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="SRI" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="SRI" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    d<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="CC90009" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="CC90009" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    e<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="Clitocine" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="Clitocine" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    f<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="SJ6986" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="SJ6986" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    g<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="Gentamicin" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="Gentamicin" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    h<-wilcox.test(treated_samples[replicate==1 & reads_allbins>=10 & stop_type=="uga" & treatment=="FUr" & up_aa%chin%c("E", "G", "L", "K", "Q", "V", "S", "I", "R", "P", "T", "A")  & up_1nt=="a", RT],
+                     treated_samples[replicate==1 & reads_allbins>10 & stop_type=="uga" & treatment=="FUr" & up_aa%chin%c("E", "G", "L", "K", "Q", "V") & up_1nt!="a", RT], alternative="greater")$p.value
+    # Multiple comparision adjustment:   
+    p.adjust(c(a,b,c,d,e,f,g,h), method = "fdr")
+```
+
+**Ext.Data.Fig.2j:**
+
+Calculate the mean difference in readthrough between 1 HDist codons in same_aa vs different_aa -> to test if there is an aminoacid-driven effect of the 3nts upstream.
+
+The calculations are saved in the 'one_hdist_codons_RTcomparision' object:
+
+```{r, warning = FALSE} 
+  drugs<-c("FUr", "Gentamicin", "CC90009", "G418", "Clitocine", "DAP", "SJ6986", "SRI")
+  one_hdist_codons_RTcomparision<-data.frame(same_aa=0, different_aa=0, pvalue=0, RTCs="tofill")
+  for (j in 1:length(drugs)){
+    tmp<-treated_samples[stop_type=="uga" & treatment==drugs[j] & replicate==1, mean(RT, na.rm=T), by=up_123nt]
+    a1<-as.data.table(t(combn(tmp$up_123nt,2)))
+    setnames(a1, c("V1", "V2"), c("codon_1", "codon_2"))
+    for (i in 1:nrow(a1)){
+      a1$RT_1[i]<-tmp[up_123nt==a1$codon_1[i], V1]
+      a1$RT_2[i]<-tmp[up_123nt==a1$codon_2[i], V1]
+    }
+    a1[, aa_1:=translate(s2c(codon_1)), by=1:nrow(a1)]
+    a1[, aa_2:=translate(s2c(codon_2)), by=1:nrow(a1)]
+    a1[, same_aa:=if_else(aa_1==aa_2, "yes", "no")]
+    a1[, RT_diff:=abs(RT_1-RT_2)]
+    a1[, hdist:=sum(s2c(codon_1)!=s2c(codon_2)), by=1:nrow(a1)]
+    a1<-a1[hdist==1]
+    group1<-a1[same_aa=="yes", RT_diff]
+    group2<-a1[same_aa=="no", RT_diff]
+    one_hdist_codons_RTcomparision[j,1]<-round(mean(group1),4)
+    one_hdist_codons_RTcomparision[j,2]<-round(mean(group2),4)
+    one_hdist_codons_RTcomparision[j,3]<-round(t.test(group1, group2)$p.value,4)
+    one_hdist_codons_RTcomparision[j,4]<-drugs[j]
+  }
+  one_hdist_codons_RTcomparision<-as.data.table(one_hdist_codons_RTcomparision)
+  one_hdist_codons_RTcomparision
+```
+# For EDFig.2k,l, we first need to process the SJ6986 0.5uM and 20uM data (essentially repeat the same steps as for 'treated_samples' dtbl) and generate the 'SJ2c' dtbl:
+
+**All scripts below to generate the S2JC dtbl can be skipped by directly loading the 'SJ2c' from your base_dir:**
+ 
+```{r, warning = FALSE}
+  SJ2c<-readRDS(file = file.path(base_dir, "SJ2c.rds"))
+```
+
+**If the user wants to generate it step by step, then:**
+Load the Dimsum table with variant counts across bins:
+```{r, warning = FALSE} 
+load(file = file.path(base_dir, "./dimsum_SJ6986twoconcentrations_variant_data_merge.RData"))
+SJ_twocon_tmp<-as.data.table(variant_data_merge)
+
+# Remove unnecessary columns:
+  SJ_twocon_tmp<-SJ_twocon_tmp[, !c("WT", "STOP", "STOP_readthrough", "barcode_valid", "constant_region", "permitted", "too_many_substitutions", "mixed_substitutions")]
+
+# Set new column names:
+  newnames<-c() 
+  for(k in 1:length(colnames(SJ_twocon_tmp))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_twocon_tmp)[k], "_e1"))[1])}
+  colnames(SJ_twocon_tmp)<-newnames
+```
+
+Create four subdatatables, each with the data of one replicate and one concentration:
+```{r, warning = FALSE} 
+  SJ_500nM_r1<-SJ_twocon_tmp[, .SD, .SDcols = names(SJ_twocon_tmp) %like% "SJ6986500nMr1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(SJ_500nM_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_500nM_r1)[k], "nM"))[2])}; colnames(SJ_500nM_r1)<-newnames
+  newnames<-c() ;for(k in 1:length(colnames(SJ_500nM_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_500nM_r1)[k], "_"))[1])}; colnames(SJ_500nM_r1)<-newnames
+  
+  SJ_500nM_r2<-SJ_twocon_tmp[, .SD, .SDcols = names(SJ_twocon_tmp) %like% "SJ6986500nMr2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(SJ_500nM_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_500nM_r2)[k], "nM"))[2])}; colnames(SJ_500nM_r2)<-newnames
+  newnames<-c() ;for(k in 1:length(colnames(SJ_500nM_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_500nM_r2)[k], "_"))[1])}; colnames(SJ_500nM_r2)<-newnames
+  
+  SJ_20uM_r1<-SJ_twocon_tmp[, .SD, .SDcols = names(SJ_twocon_tmp) %like% "SJ698620uMr1|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(SJ_20uM_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_20uM_r1)[k], "uM"))[2])}; colnames(SJ_20uM_r1)<-newnames
+  newnames<-c() ;for(k in 1:length(colnames(SJ_20uM_r1))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_20uM_r1)[k], "_"))[1])}; colnames(SJ_20uM_r1)<-newnames
+  
+  SJ_20uM_r2<-SJ_twocon_tmp[, .SD, .SDcols = names(SJ_twocon_tmp) %like% "SJ698620uMr2|nt_seq|aa_seq"]
+  newnames<-c() ;for(k in 1:length(colnames(SJ_20uM_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_20uM_r2)[k], "uM"))[2])}; colnames(SJ_20uM_r2)<-newnames
+  newnames<-c() ;for(k in 1:length(colnames(SJ_20uM_r2))){
+    newnames<-c(newnames, unlist(strsplit(colnames(SJ_20uM_r2)[k], "_"))[1])}; colnames(SJ_20uM_r2)<-newnames
+```
+
+Generate the treatment and replicate columns:
+```{r, warning = FALSE} 
+  SJ_500nM_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(SJ_500nM_r1)][, c("treatment", "replicate"):=.("0.5µM", 1)]  
+  SJ_500nM_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(SJ_500nM_r2)][, c("treatment", "replicate"):=.("0.5µM", 2)]  
+  SJ_20uM_r1[, reads_allbins:=sum(c(r1p4,r1p5,r1p6,r1p7,r1p8)), by=1:nrow(SJ_20uM_r1)][, c("treatment", "replicate"):=.("20µM", 1)]  
+  SJ_20uM_r2[, reads_allbins:=sum(c(r2p4,r2p5,r2p6,r2p7,r2p8)), by=1:nrow(SJ_20uM_r2)][, c("treatment", "replicate"):=.("20µM", 2)]  
+```
+
+Define the mean mCherry value of each gate, for each of the the drug experiments, and normalise it to the mean mCherry value of the non-PTC control variant:
+The mean mCherry values of each gate for each drug are stored in 'gates_boundaries' file. Load it:
+```{r, warning = FALSE} 
+    gates_boundaries_twoconc<-as.data.table(openxlsx::read.xlsx(file.path(base_dir, "gates_boundaries.xlsx"), sheet = 4)) 
+    SJ_500nM_gates<-gates_boundaries_twoconc[Treatment=="500nM" & Replicate==1, round(((Mean_value)/3400)*100,2)]
+    SJ_20uM_gates<-gates_boundaries_twoconc[Treatment=="20uM" & Replicate==1, round(((Mean_value)/3400)*100,2)]
+
+    SJ_500nM_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.514, (r1p5/(sum(r1p5)))*0.142, (r1p6/(sum(r1p6)))*0.076, (r1p7/(sum(r1p7)))*0.074, (r1p8/(sum(r1p8)))*0.044)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(SJ_500nM_r1)][, fitness_rep:=((r1p4_norm*SJ_500nM_gates[1] + r1p5_norm*SJ_500nM_gates[2] + r1p6_norm*SJ_500nM_gates[3] + r1p7_norm*SJ_500nM_gates[4] + r1p8_norm*SJ_500nM_gates[5])/sum_normreads), by=1:nrow(SJ_500nM_r1)]     
+    SJ_500nM_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.514, (r2p5/(sum(r2p5)))*0.142, (r2p6/(sum(r2p6)))*0.076, (r2p7/(sum(r2p7)))*0.074, (r2p8/(sum(r2p8)))*0.044)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(SJ_500nM_r2)][, fitness_rep:=((r2p4_norm*SJ_500nM_gates[1] + r2p5_norm*SJ_500nM_gates[2] + r2p6_norm*SJ_500nM_gates[3] + r2p7_norm*SJ_500nM_gates[4] + r2p8_norm*SJ_500nM_gates[5])/sum_normreads), by=1:nrow(SJ_500nM_r2)]    
+    SJ_20uM_r1[, c("r1p4_norm", "r1p5_norm", "r1p6_norm", "r1p7_norm", "r1p8_norm"):=.((r1p4/(sum(r1p4)))*0.145, (r1p5/(sum(r1p5)))*0.185, (r1p6/(sum(r1p6)))*0.198, (r1p7/(sum(r1p7)))*0.217, (r1p8/(sum(r1p8)))*0.086)][, sum_normreads:=sum(c(r1p4_norm, r1p5_norm, r1p6_norm, r1p7_norm, r1p8_norm)), by=1:nrow(SJ_20uM_r1)][, fitness_rep:=((r1p4_norm*SJ_20uM_gates[1] + r1p5_norm*SJ_20uM_gates[2] + r1p6_norm*SJ_20uM_gates[3] + r1p7_norm*SJ_20uM_gates[4] + r1p8_norm*SJ_20uM_gates[5])/sum_normreads), by=1:nrow(SJ_20uM_r1)]    
+    SJ_20uM_r2[, c("r2p4_norm", "r2p5_norm", "r2p6_norm", "r2p7_norm", "r2p8_norm"):=.((r2p4/(sum(r2p4)))*0.145, (r2p5/(sum(r2p5)))*0.185, (r2p6/(sum(r2p6)))*0.198, (r2p7/(sum(r2p7)))*0.217, (r2p8/(sum(r2p8)))*0.086)][, sum_normreads:=sum(c(r2p4_norm, r2p5_norm, r2p6_norm, r2p7_norm, r2p8_norm)), by=1:nrow(SJ_20uM_r2)][, fitness_rep:=((r2p4_norm*SJ_20uM_gates[1] + r2p5_norm*SJ_20uM_gates[2] + r2p6_norm*SJ_20uM_gates[3] + r2p7_norm*SJ_20uM_gates[4] + r2p8_norm*SJ_20uM_gates[5])/sum_normreads), by=1:nrow(SJ_20uM_r2)]    
+```
+
+Remove the 'r1' or 'r2' of the column names, to be able to merge all the datatables in one:
+```{r, warning = FALSE} 
+    cnames_long<-c("nt_seq", "aa_seq", "p4", "p5", "p6", "p7", "p8", "reads_allbins", "treatment", "replicate", "p4_norm", "p5_norm", "p6_norm", "p7_norm", "p8_norm", "sum_normreads", "fitness_rep")
+    colnames(SJ_500nM_r1)<-cnames_long; colnames(SJ_500nM_r2)<-cnames_long
+    colnames(SJ_20uM_r1)<-cnames_long; colnames(SJ_20uM_r2)<-cnames_long
+```
+
+Calculate RT and standard deviation across the two replicates:
+```{r, warning = FALSE} 
+    SJ_500nM<-rbind(SJ_500nM_r1, SJ_500nM_r2); SJ_500nM[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+    SJ_20uM<-rbind(SJ_20uM_r1, SJ_20uM_r2); SJ_20uM[, c("RT", "sd_RT"):=.(mean(fitness_rep), sd(fitness_rep)), by=nt_seq]
+```
+
+Unify the 500nM and 20uM datasets into 'SJ2c':  
+```{r, warning = FALSE} 
+  SJ2c<-rbind(SJ_500nM, SJ_20uM)
+```
+  
+Add new columns with sequence information, transform the readthrough efficiency ('RT', 0-100 bounded) into a binomial scale ('RT_binomial', 0-1 bounded) and generate the clinical trial column:
+```{r, warning = FALSE} 
+  special_variant<-"GPRGPRPQTSLLTLDD*GGQGQEPPPEPRITLKVGGQPVTFLVDTGAQH" ## this variant doesn't have the stop codon in position 73-75, but it has it in position 49-51. Have to treat it separately from the others:
+  SJ2c[, stop_type:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 49, 51)), unlist(substr(nt_seq, 73, 75))), by=1:nrow(SJ2c)]
+  SJ2c[, down_1nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 52)), unlist(substr(nt_seq, 76, 76))), by=1:nrow(SJ2c)]
+  SJ2c[, down_2nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 53, 53)), unlist(substr(nt_seq, 77, 77))), by=1:nrow(SJ2c)]
+  SJ2c[, down_3nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 54, 54)), unlist(substr(nt_seq, 78, 78))), by=1:nrow(SJ2c)]
+  SJ2c[, down_4nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 55, 55)), unlist(substr(nt_seq, 79, 79))), by=1:nrow(SJ2c)]
+  SJ2c[, down_5nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 56, 56)), unlist(substr(nt_seq, 80, 80))), by=1:nrow(SJ2c)]
+  SJ2c[, down_6nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 57, 57)), unlist(substr(nt_seq, 81, 81))), by=1:nrow(SJ2c)]
+  SJ2c[, down_7nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 58, 58)), unlist(substr(nt_seq, 82, 82))), by=1:nrow(SJ2c)]
+  SJ2c[, down_8nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 59, 59)), unlist(substr(nt_seq, 83, 83))), by=1:nrow(SJ2c)]
+  SJ2c[, down_12nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 53)), unlist(substr(nt_seq, 76, 77))), by=1:nrow(SJ2c)]
+  SJ2c[, down_123nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 54)), unlist(substr(nt_seq, 76, 78))), by=1:nrow(SJ2c)]
+  SJ2c[, down_1234nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 52, 55)), unlist(substr(nt_seq, 76, 79))), by=1:nrow(SJ2c)]
+  SJ2c[, up_1nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 48, 48)), unlist(substr(nt_seq, 72, 72))), by=1:nrow(SJ2c)]
+  SJ2c[, up_2nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 47, 47)), unlist(substr(nt_seq, 71, 71))), by=1:nrow(SJ2c)]
+  SJ2c[, up_3nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 46, 46)), unlist(substr(nt_seq, 70, 70))), by=1:nrow(SJ2c)]
+  SJ2c[, up_12nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 47, 48)), unlist(substr(nt_seq, 71, 72))), by=1:nrow(SJ2c)]
+  SJ2c[, up_123nt:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 46, 48)), unlist(substr(nt_seq, 70, 72))), by=1:nrow(SJ2c)]
+  SJ2c[, up_codon_2:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 43, 45)), unlist(substr(nt_seq, 67,69))), by=1:nrow(SJ2c)]
+  SJ2c[, up_codon_3:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 40, 42)), unlist(substr(nt_seq, 64,66))), by=1:nrow(SJ2c)]
+  SJ2c[, up_codon_4:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 37, 39)), unlist(substr(nt_seq, 61,63))), by=1:nrow(SJ2c)]
+  SJ2c[, up_codon_5:=if_else(aa_seq==special_variant, unlist(substr(nt_seq, 34, 36)), unlist(substr(nt_seq, 58,60))), by=1:nrow(SJ2c)]
+  SJ2c[, up_aa:= translate(s2c(up_123nt)), by=1:nrow(SJ2c)]
+  SJ2c[, up_aa2:= translate(s2c(up_codon_2)), by=1:nrow(SJ2c)]
+  SJ2c[, RT_binomial:=RT/100]
+  SJ2c[, clinical_trial:="none"]
+  # Factorize the treatment column:
+  SJ2c$treatment<-as.factor(SJ2c$treatment)
+  SJ2c$treatment <- factor(SJ2c$treatment, levels=c("0.5µM", "20µM"))
+```
+
+Basal_RT column: create a column that shows if the variant undergoes RT in basal conditions (using the subdataset of treatment='Untreated' and an arbitrary readthrough cutoff of 0.4):
+```{r, warning = FALSE}   
+  high_basal_RT<-treated_samples[RT>0.4 & treatment=="Untreated", unique(nt_seq)]
+  SJ2c[, basal_RT:=if_else(nt_seq%chin%high_basal_RT, "high", "low")]
+```
+Include all the information stored in final_PTC_df to treated_samples. final_PTC_df has varied genomic information about each variant, that we computed during library design:
+Restore the final_PTC_df dataframe:
+``` {r, warning = FALSE} 
+  final_PTC_df<-readRDS(file = file.path(base_dir, "final_PTC_df.rds"))
+  final_PTC_df<-as.data.table(final_PTC_df)
+```  
+
+Set the nt_seq column of final_PTC_df in the same format than nt_seq of treated_samples, to allow for left_join to work and add final_PTC_df info to treated_samples:
+```{r, warning = FALSE}  
+  final_PTC_df<-final_PTC_df[!duplicated(nt_seq),] # Remove 18 duplicated sequences.
+  final_PTC_df[, nt_seq:=if_else(is.na(fasta_mut_rev_comp), fasta_mut, fasta_mut_rev_comp), by=1:nrow(final_PTC_df)]
+  final_PTC_df[, nt_seq:=tolower(nt_seq)]
+  final_PTC_df[, nt_seq:=if_else(length_mut_sequence==149, paste(nt_seq, "t", sep=""), nt_seq)]
+  final_PTC_df[, nt_seq:=if_else(length_mut_sequence==148, paste(nt_seq, "at", sep=""), nt_seq)]
+
+  SJ2c<-left_join(SJ2c, final_PTC_df, by = "nt_seq")
+  SJ2c[,c("fasta_wt", "fasta_mut", "fasta_wt_rev_comp", "fasta_mut_rev_comp", "Twist_sequence"):=.(NULL, NULL, NULL, NULL, NULL)] # Remove unnecessary columns
+  SJ2c$replicate<-as.integer(SJ2c$replicate)
+```  
+
+Add the viral column (we needed the info from final_PTC_df to compute that column) + the identifier column:
+```{r, warning = FALSE}  
+    SJ2c[, viral:=if_else(Database%chin%c("TCGA","clinvar","msk_impact"), "no", "yes")]
+    SJ2c[, identifier:=c(1:5856), by=c("treatment", "replicate")] ### each variant has a number (useful to identify the 6K variants with a number, besides the the nt_seq)
+```  
+
+Generate the Gene_class column, that indicates whether the mutation is germline (if it comes from Clinvar) or somatic (if it comes from MSK_impact or TCGA). The viral mutations are indicated as "viral".
+```{r, warning = FALSE}  
+    SJ2c[, Gene_class:=if_else(Database=="clinvar", "germline", "somatic")]
+    SJ2c[viral=="yes", Gene_class:="viral"]
+```  
+
+Add in the SJ6986_5uM condition (from 'treated_samples' dtbl)
+```{r, warning = FALSE}      
+    SJ2c<-rbind(SJ2c, treated_samples[treatment=="SJ6986", .SD, .SDcols = colnames(SJ2c)])
+    SJ2c[treatment=="SJ6986", treatment:="5µM"]
+    # Re-factorize the treatment column:
+      SJ2c$treatment<-as.factor(SJ2c$treatment)
+      SJ2c$treatment <- factor(SJ2c$treatment, levels=c("0.5µM", "5µM", "20µM"))
+```
+
+**Ext.Data.Fig.2k:** Readthrough distribution for each concentration:
+```{r, warning = FALSE}  
+        ggplot(SJ2c[!is.na(RT)],aes(x = RT, y = treatment)) +
+          geom_density_ridges(aes(scale = 2)) +
+          scale_y_discrete(expand = c(0, 0), limits=c("0.5µM", "5µM", "20µM"))+
+          scale_x_continuous(limits = c(-0.25, 7.5), breaks=seq(1,7.5,1))+
+          ylab("Density")+
+          xlab("Readthrough (%)")+
+          theme_classic()+
+          xlim(0,7) +
+          theme(axis.text.y = element_text(vjust = 0.5,
+                                           hjust = 0.5,
+                                           angle = 0),
+                axis.text.x = element_text(vjust = 0.5,
+                                           hjust = 0.5,
+                                           angle = 0),
+                legend.title = element_blank(),
+                legend.position = "none",
+                text = element_text(size = 20),
+                legend.text = element_text(size=12)) +
+          labs(title="") + p
+```
+
+**Ext.Data.Fig.2l:**
+```{r, warning = FALSE}  
+    a<-SJ2c[treatment=="0.5µM" & replicate==1, c("nt_seq", "RT")]
+    b<-SJ2c[treatment=="5µM" & replicate==1,  c("nt_seq", "RT")]
+    c<-SJ2c[treatment=="20µM" & replicate==1,  c("nt_seq", "RT")]
+  
+    interdrugs_correlation_S2Jc<-left_join(left_join(a,b, by="nt_seq"),c, by="nt_seq")
+    colnames(interdrugs_correlation_S2Jc)<-c("identifier", "0.5µM", "5µM", "20µM")
+    
+    p1<-ggplot(interdrugs_correlation_S2Jc, aes(y=`5µM`, x=`20µM`)) + geom_hex(bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + geom_smooth(method='lm', color="black") + stat_cor(aes(label = ..r.label..), method = "pearson", size=7) + theme(legend.position = "none") + p
+    p2<-ggplot(interdrugs_correlation_S2Jc, aes(y=`5µM`, x=`0.5µM`)) + geom_hex(bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + geom_smooth(method='lm', color="black") + stat_cor(aes(label = ..r.label..), method = "pearson", size=7) + theme(legend.position = "none") + p
+    p3<-ggplot(interdrugs_correlation_S2Jc, aes(y=`20µM`, x=`0.5µM`)) + geom_hex(bins=70) + scale_fill_viridis(limits = c(0, 100), oob = scales::squish, alpha = 0.85) + geom_smooth(method='lm', color="black") + stat_cor(aes(label = ..r.label..), method = "pearson", size=7) + theme(legend.position = "none") + p
+    ggarrange(p1, p2, p3, ncol=3)
+```

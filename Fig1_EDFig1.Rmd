@@ -1,5 +1,5 @@
 ---
-title: "Fig1_extdataFig1"
+title: "Fig1_EDFig1"
 output: html_document
 ---
 

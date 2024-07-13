@@ -38,11 +38,11 @@ The 7 R Markdown  files contain the code to reproduce the figures and results fr
 R Markdown files are meant to be run in the following order:
 
 * **1. Generate_treated_samples.Rmd**
-* **2. Fig1_extdataFig1.Rmd**
-* **3. Fig2_extdataFig2.Rmd**
-* **4. Fig3_extdataFig3.Rmd**
-* **5. Fig4_extdataFig4.Rmd**
-* **6. Fig5_extdatafig5.Rmd**
+* **2. Fig1_EDFig1.Rmd**
+* **3. Fig2_EDFig2.Rmd**
+* **4. Fig3_EDFig3.Rmd**
+* **5. Fig4_EDFig4.Rmd**
+* **6. Fig5_EDFig5.Rmd**
 * **7. Fig6.Rmd**
 
 # Additional scripts and software
